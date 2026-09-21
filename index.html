@@ -142,6 +142,21 @@
       flex-wrap: wrap;
     }
 
+    .inline-setting {
+      display: inline-flex;
+      align-items: center;
+      margin: 0;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .small-number {
+      width: 64px;
+      padding: 8px 8px;
+    }
+
     button {
       background: #334155;
       color: white;
@@ -250,6 +265,25 @@
       border-radius: 3px;
     }
 
+    .auto-meta-badge {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      max-width: 390px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--text-muted);
+    }
+
+    .auto-meta-badge strong {
+      color: var(--text);
+    }
+
+    .metadata-instructions {
+      margin-bottom: 0;
+    }
+
     .instructions {
       background: #0f172a;
       border-left: 4px solid var(--primary);
@@ -293,14 +327,9 @@
           Faithfully reproduces the "for edit" highlighting: Cyan header, Yellow chords/sections, Green band directives.
         </p>
       </div>
-      <div>
-        <label for="songPreset">Load Preloaded Song:</label>
-        <select id="songPreset" onchange="loadPreset(this.value)">
-          <option value="mighty">Mighty to Save (Key of F) - Hillsong</option>
-          <option value="mahal">Mahal na Mahal Kita Panginoon (Key of A)</option>
-          <option value="run">I Will Run to You (Key of E)</option>
-          <option value="love">I Love You Lord (Key of E)</option>
-        </select>
+      <div class="auto-meta-badge">
+        <strong>Automatic Metadata Detection</strong><br>
+        <span>Paste one or multiple songs. Title, Key and BPM are detected from each song automatically.</span>
       </div>
     </header>
 
@@ -310,38 +339,18 @@
         <div class="card-title">
           <span>Song Metadata & Chords</span>
           <div class="controls-row">
-            <button onclick="cleanChordSpacing()" class="primary" title="Collapse spaces between chords to 1 space">🧹 1 Space Per Chord</button>
-            <button onclick="transpose(-1)" title="Transpose Down 1 Semitone">♭ -1</button>
-            <button onclick="transpose(1)" title="Transpose Up 1 Semitone">♯ +1</button>
+            <button onclick="autoFormatSong()" class="primary" title="Automatically clean and reorganize pasted song formatting">Auto-Format Song</button>
+            <button onclick="cleanChordSpacing()" title="Collapse spaces between chords to 1 space">1 Space Per Chord</button>
+            <button onclick="transpose(-1)" title="Transpose Down 1 Semitone">-1 Semitone</button>
+            <button onclick="transpose(1)" title="Transpose Up 1 Semitone">+1 Semitone</button>
+            <label class="inline-setting" for="minLyricChars">Min lyric chars</label>
+            <input class="small-number" type="number" id="minLyricChars" min="1" max="80" value="15" oninput="autoFormatSong(false)" title="Shorter lyric phrases are automatically combined with nearby phrases">
           </div>
         </div>
 
-        <div class="form-row">
-          <div>
-            <label for="songTitle">Song Title</label>
-            <input type="text" id="songTitle" value="MIGHTY TO SAVE" oninput="updatePreview()">
-          </div>
-          <div>
-            <label for="songKey">Key</label>
-            <select id="songKey" onchange="onKeySelect(this.value)">
-              <option value="C">C</option>
-              <option value="C#">C# / Db</option>
-              <option value="D">D</option>
-              <option value="Eb">Eb / D#</option>
-              <option value="E">E</option>
-              <option value="F" selected>F</option>
-              <option value="F#">F# / Gb</option>
-              <option value="G">G</option>
-              <option value="Ab">Ab / G#</option>
-              <option value="A">A</option>
-              <option value="Bb">Bb / A#</option>
-              <option value="B">B</option>
-            </select>
-          </div>
-          <div>
-            <label for="songBpm">BPM</label>
-            <input type="text" id="songBpm" value="75" oninput="updatePreview()">
-          </div>
+        <div class="instructions metadata-instructions">
+          <strong>No manual title/key/BPM entry needed.</strong>
+          The formatter recognizes every song header in the pasted text. It supports repeated metadata such as <code>Bpm: 75</code> and <code>Key of C</code>, so three or more songs can be pasted into the same box and each one keeps its own title, key and BPM.
         </div>
 
         <div>
@@ -350,8 +359,8 @@
         </div>
 
         <div class="instructions">
-          <strong>Tip for New Songs:</strong>
-          Put chords directly on the line above their lyrics. Section tags (like <code>[Verse]</code>, <code>[Chorus]</code>, <code>Intro:</code>) are auto-highlighted in yellow. Band cues in parentheses (like <code>(Build up)</code> or <code>(Pasok Drums)</code>) are auto-highlighted in green!
+          <strong>Paste messy charts directly:</strong>
+          The formatter reorganizes chord/lyric lines automatically. Short lyric fragments are combined until they reach the <strong>minimum lyric characters</strong> setting, while their chords move with the combined phrase. Hyphen-split words, slash chords, chord holds, and chord changes such as <code>D-A</code> are supported.
         </div>
       </div>
 
@@ -418,369 +427,6 @@
       'B': 11, 'Cb': 11
     };
 
-    const songDatabase = {
-      mighty: {
-        title: "MIGHTY TO SAVE",
-        key: "F",
-        bpm: "75",
-        content: `(Keyboard / Pads / Acoustic)
-Intro:
-Bb2 F Dm7 Csus (2x)
-
-
-[Verse 1]
-Bb2 F
-Everyone needs compassion, love that's never failing
-Dm7 Csus
-Let mercy fall on me
-Bb2 F
-Everyone needs forgiveness, the kindness of a Saviour
-Dm7 Csus Bb2 Csus Bb2 Csus
-The hope of nations
-
-
-(Pasok Bass and Drums)
-[Chorus]
-F Csus
-Saviour, He can move the mountains
-Bb2 F
-My God is mighty to save
-Dm7 Csus
-He is mighty to save
-F Csus
-Forever, Author of salvation
-Bb2 F
-He rose and conquered the grave
-Dm7 Csus
-Jesus conquered the grave
-
-
-[Verse 2]
-Bb2 F
-So take me as You find me, all my fears and failures
-Dm7 Csus
-Fill my life again
-Bb2 F
-I give my life to follow, everything I believe in
-Dm7 Csus Bb2 Csus Bb2 Csus
-Now I surrender
-
-
-(Full Band)
-[Chorus]
-F Csus
-Saviour, He can move the mountains
-Bb2 F
-My God is mighty to save
-Dm7 Csus
-He is mighty to save
-F Csus
-Forever, Author of salvation
-Bb2 F
-He rose and conquered the grave
-Dm7 Csus
-Jesus conquered the grave
-
-
-[Chorus]
-F Csus
-Saviour, He can move the mountains
-Bb2 F
-My God is mighty to save
-Dm7 Csus
-He is mighty to save
-F Csus
-Forever, Author of salvation
-Bb2 F
-He rose and conquered the grave
-Dm7 Csus
-Jesus conquered the grave
-
-
-(Build up)
-[Bridge]
-Bb2 F Csus
-Shine your light and let the whole world see
-Dm7
-We're singing
-Bb2 F Csus Dm7
-For the glory of the risen King, Jesus
-
-
-(Full Band)
-[Bridge]
-Bb2 F Csus
-Shine your light and let the whole world see
-Dm7
-We're singing
-Bb2 F Csus Dm7
-For the glory of the risen King, Jesus
-
-
-[Chorus]
-F Csus
-Saviour, He can move the mountains
-Bb2 F
-My God is mighty to save
-Dm7 Csus
-He is mighty to save
-F Csus
-Forever, Author of salvation
-Bb2 F
-He rose and conquered the grave
-Dm7 Csus Bb2ll Fll
-Jesus conquered the grave
-
-
-(Soft)
-Outro:
-Bb2 F Dm7 Csus
-Bb2ll`
-      },
-      mahal: {
-        title: "MAHAL NA MAHAL KITA PANGINOON",
-        key: "A",
-        bpm: "135",
-        content: `Intro
-A C#m-D D# E F F#m E/G# 
-Bm C#m-D (3x) E
-
-
-[Verse]
-A C#m D (2x)
-Mahal na mahal kita Panginoon
-A C#m D-G-E
-Mahal na mahal kita Panginoon
-D  Dm 
-Kailanmay di kita ipagpapalit
-C#m  F#m
-Pagkat sa piling mo’y langit
-Bm C#m D  
-Mahal na mahal kita Panginoon
-
-
-A C#m D 
-
-
-[Verse]
-A C#m D (2x)
-Mahal na mahal kita Panginoon
-A C#m D-G-E
-Mahal na mahal kita Panginoon
-D Dm
-Kailanmay di kita ipagpapalit
-C#m F#m
-Pagkat sa piling mo’y langit
-Bm C#m D A
-Mahal na mahal kita Panginoon
- 
-
-[Chorus]
-C#m F#m Bm E
-Habangbuhay papupurihan ka
-C#m F#m  Bm E
-Habangbuhay maglilingkod say o
-C#m F#m Bmll E
-Habangbuhay pag-ibig ko say’oy iaalay
-
-
-[Verse]
-A C#m D (2x)
-Mahal na mahal kita Panginoon
-A C#m D-G-E
-Mahal na mahal kita Panginoon
-D  Dm 
-Kailanmay di kita ipagpapalit
-C#m  F#m
-Pagkat sa piling mo’y langit
-Bm C#m D A
-Mahal na mahal kita Panginoon
- 
-
-[Chorus]
-C#m F#m Bm E
-Habangbuhay papupurihan ka
-C#m F#m  Bm E
-Habangbuhay maglilingkod say o
-C#m F#m Bmll Ell
-Habangbuhay pag-ibig ko say’oy iaalay
-
-
-[Chorus]
-C#m F#m Bm E
-Habangbuhay papupurihan ka
-C#m F#m  Bm E
-Habangbuhay maglilingkod say o
-C#m F#m Bmll Ell
-Habangbuhay pag-ibig ko say’oy iaalay
-
-
-[Verse]
-A C#m D (2x)
-Mahal na mahal kita Panginoon
-A C#m D-G-E
-Mahal na mahal kita Panginoon
-D  Dm 
-Kailanmay di kita ipagpapalit
-C#m  F#m
-Pagkat sa piling mo’y langit
-Bm C#m D  
-Mahal na mahal kita 
-Bm C#m D E
-Mahal na mahal kita 
-Bm C#m Dll Ell
-Mahal na mahal kita Panginoon
-
-
-Outro:
-A C#m-D D# E F F#m E/G# 
-Bm C#m-D (2x) Ell All`
-      },
-      run: {
-        title: "I WILL RUN TO YOU",
-        key: "E",
-        bpm: "81",
-        content: `Verse 1: 
-G C/G D/G G 
-Your eye is on the sparrow 
- C/G D/F# Em Em/D 
-And Your hand, it comforts me 
-F/C C 
-From the ends of the Earth 
-D D/F#  G 
-to the depth of my    heart 
-C Am Dsus D 
-Let Your mercy and strength be seen 
-
-
-Verse 2: 
-C C/D G G/B 
-You call me to Your purpose 
-C D Em Em/D 
-As angels understand 
-F/C C 
-For Your glo - ry, 
-D D/F# G 
-may You draw all   men 
-G/B C D G 
-As Your love and grace demand 
-
-
-Chorus: 
-C/G D/G G 
-And I will run   to   YOU, 
-D/F#  B/D#  Em 
-To Your words  of    truth 
-Am7 G/B 
-Not by might, not by power 
-C A/C# D 
-But by the spir - it    of   God 
-G C/G D/G G 
-Yes I will run   the   race, 
-D/F# B/D# Em 
-'Till I see    Your    face 
-Am7 G/B Dsus Gsus G 
-Oh let me live in the glory of Your grace`
-      },
-      love: {
-        title: "I LOVE YOU LORD",
-        key: "E",
-        bpm: "136",
-        content: `(Keyboard / Pads / Acoustic)
-Verse:
-B F#/A# G#m
-I love You Lord, and I lift my voice
-E B/D# C#m F#sus F#
-To worship You, O my soul rejoice
-B E/B F#/A# G#m
-Take joy my King     in what You hear
-E B/D# F#
-Let it be a sweet, sweet sound
-E B
-in Your ear
- 
-
-(Pasok Bass and E-Guitar)
-Verse:
-B F#/A# G#m
-I love You Lord, and I lift my voice
-E B/D# C#m F#sus F#
-To worship You, O my soul rejoice
-B E/B F#/A# G#m
-Take joy my King     in what You hear
-(Pasok Drums)
-E B/D# F#
-Let it be a sweet, sweet sound
-E B/D# F#
-Let it be a sweet, sweet sound
-G#m7 E B/D# F#
-Let it be a sweet, sweet sound
-G#m7 E
-in your ear
-
-
-Instrumental 1 (3x)
-E B/D# F# G#m
- 
-
-[Bridge]
-E B/D# F# G#m
-We love You, adore You, Je-sus
-E B/D# F# G#m
-Yes,we love You, adore You, Je-sus
-E B/D# F# G#m
-Yes,we love You, adore You, Je-sus
-E B/D# F# G#m
-Yes,we love You, adore You, Jesus
-
-
-(Full Band)
-Verse:
-B F#/A# G#m
-I love You Lord, and I lift my voice
-E B/D# C#m F#sus F#
-To worship You, O my soul rejoice
-B E/B F#/A# G#m
-Take joy my King     in what You hear
-E B/D# F#
-Let it be a sweet, sweet sound
-E B/D# F#
-Let it be a sweet, sweet sound
-G#m7 E B/D# F#
-Let it be a sweet, sweet sound
-G#m7 E
-in your ear
-
-
-(Soft)
-Instrumental 1 (3x)
-E B/D# F# G#m
-
-
-[Chorus]
-B F#/A# G#m
-I love You Lord, and I lift my voice
-E B/D# C#m F#sus F#
-To worship You, O my soul rejoice
-B E/B F#/A# G#m
-Take joy my King     in what You hear
-E B/D# F#
-Let it be a sweet, sweet sound
-E B
-in Your ear`
-      }
-    };
-
-    function loadPreset(key) {
-      const song = songDatabase[key];
-      if (!song) return;
-      document.getElementById('songTitle').value = song.title;
-      document.getElementById('songKey').value = song.key;
-      document.getElementById('songBpm').value = song.bpm;
-      document.getElementById('songContent').value = song.content;
-      updatePreview();
-    }
-
     function isBandCue(line) {
       const trimmed = line.trim();
       return /^\((Pasok|Keyboard|Pads|Acoustic|Build up|Full Band|Soft|slowly Build up).*\)$/i.test(trimmed) ||
@@ -792,7 +438,570 @@ in Your ear`
 
     function isSectionHeader(line) {
       const trimmed = line.trim();
-      return /^\[?(Verse|Chorus|Bridge|Intro|Outro|Tag|Instrumental|Adlib|Ending|MEDLEY)[\s0-9:]*\]?$/i.test(trimmed);
+      return /^\[?(Verse|Chorus|Pre-?Chorus|Post-?Chorus|Refrain|Bridge|Pre-?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)[\s0-9:()x-]*\]?$/i.test(trimmed);
+    }
+
+    function normalizeSectionHeader(line) {
+      const trimmed = line.trim();
+      if (!isSectionHeader(trimmed)) return null;
+
+      let header = trimmed.replace(/^\[/, '').replace(/\]$/, '').trim();
+      header = header.replace(/\s*:\s*$/, '').trim();
+      header = header.replace(/\s+/g, ' ');
+
+      // Keep the section label consistent in the final chart.
+      return `[${header}]`;
+    }
+
+    function normalizeChordLine(line) {
+      return line
+        .replace(/\u00A0/g, ' ')
+        .replace(/[\t ]+/g, ' ')
+        .replace(/\s*-\s*/g, '-')
+        .trim();
+    }
+
+    function extractInlineChords(line) {
+      const trimmed = line.trim();
+      if (!trimmed || isBandCue(trimmed) || isSectionHeader(trimmed) || isChordLine(trimmed)) {
+        return null;
+      }
+
+      // Support common [G], [D/F#], [C#m] notation copied from chord websites.
+      const bracketMatches = [...trimmed.matchAll(/\[([A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*(?:\/[A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*)?)\]/g)];
+      if (bracketMatches.length > 0) {
+        const chords = bracketMatches.map(m => m[1]);
+        const lyric = trimmed.replace(/\[([A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*(?:\/[A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*)?)\]/g, '').replace(/\s{2,}/g, ' ').trim();
+        return { chordLine: chords.join(' '), lyricLine: lyric };
+      }
+
+      // Support a chord prefix followed by lyrics, e.g. "G C Em Amazing grace".
+      const tokens = trimmed.split(/\s+/);
+      let chordTokens = [];
+      let index = 0;
+      while (index < tokens.length && isChordToken(tokens[index])) {
+        chordTokens.push(tokens[index]);
+        index++;
+      }
+
+      if (chordTokens.length > 0 && index < tokens.length && chordTokens.length >= 1) {
+        return {
+          chordLine: normalizeChordLine(chordTokens.join(' ')),
+          lyricLine: tokens.slice(index).join(' ')
+        };
+      }
+
+      return null;
+    }
+
+    function getMinimumLyricChars() {
+      const value = Number(document.getElementById('minLyricChars')?.value);
+      return Number.isFinite(value) && value > 0 ? Math.round(value) : 15;
+    }
+
+    function lyricCharacterCount(text) {
+      return String(text || '').replace(/\s/g, '').length;
+    }
+
+    function cleanLyricFragment(text) {
+      return String(text || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[\t ]+/g, ' ')
+        .trim();
+    }
+
+    function mergeHyphenatedLyricLines(lines) {
+      const merged = [];
+      for (const raw of lines) {
+        const line = cleanLyricFragment(raw);
+        if (!line) continue;
+        if (merged.length && /-$/.test(merged[merged.length - 1]) && !/^[-–—]/.test(line)) {
+          merged[merged.length - 1] = merged[merged.length - 1].slice(0, -1) + line;
+        } else {
+          merged.push(line);
+        }
+      }
+      return merged;
+    }
+
+    function splitInlineChordLineForFormatter(line) {
+      const trimmed = line.trim();
+      if (!trimmed) return null;
+
+      const bracketMatches = [...trimmed.matchAll(/\[([^\]]+)\]/g)];
+      if (bracketMatches.length) {
+        const valid = bracketMatches.map(m => m[1].trim()).filter(isChordToken);
+        if (valid.length === bracketMatches.length) {
+          const lyric = trimmed.replace(/\[([^\]]+)\]/g, '').replace(/\s{2,}/g, ' ').trim();
+          return { chordLine: normalizeChordLine(valid.join(' ')), lyric };
+        }
+      }
+
+      const tokens = trimmed.split(/\s+/);
+      let count = 0;
+      while (count < tokens.length && isChordToken(tokens[count])) count++;
+      if (count > 0 && count < tokens.length) {
+        return {
+          chordLine: normalizeChordLine(tokens.slice(0, count).join(' ')),
+          lyric: tokens.slice(count).join(' ')
+        };
+      }
+      return null;
+    }
+
+    function normalizePastedLine(line) {
+      return String(line || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[\t ]+/g, ' ')
+        .trim();
+    }
+
+    function normalizeKeyName(key) {
+      const normalized = String(key || '').trim();
+      const aliases = { 'D#': 'Eb', 'G#': 'Ab', 'A#': 'Bb' };
+      return aliases[normalized] || normalized;
+    }
+
+    function normalizePastedLine(line) {
+      return String(line || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[\t ]+/g, ' ')
+        .trim();
+    }
+
+    function getMinimumLyricChars() {
+      const value = Number(document.getElementById('minLyricChars')?.value);
+      return Number.isFinite(value) && value > 0 ? Math.round(value) : 15;
+    }
+
+    function lyricCharacterCount(text) {
+      return String(text || '').replace(/\s/g, '').length;
+    }
+
+    function cleanLyricFragment(text) {
+      return String(text || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[\t ]+/g, ' ')
+        .trim()
+        .replace(/\s+([,.!?;:])/g, '$1');
+    }
+
+    function parseMetadataLine(line) {
+      const clean = normalizePastedLine(line);
+
+      const bpmMatch = clean.match(/^BPM\s*:?\s*(\d+(?:\.\d+)?)$/i);
+      if (bpmMatch) return { type: 'bpm', value: bpmMatch[1] };
+
+      const keyMatch = clean.match(/^Key\s*(?:of\s*)?:?\s*([A-G](?:#|b)?)\s*$/i);
+      if (keyMatch) return { type: 'key', value: normalizeKeyName(keyMatch[1]) };
+
+      return null;
+    }
+
+    function isMetadataLine(line) {
+      return !!parseMetadataLine(line);
+    }
+
+    function isLikelySongTitle(line) {
+      const clean = normalizePastedLine(line);
+      if (!clean) return false;
+      if (isMetadataLine(clean) || isSectionHeader(clean) || isBandCue(clean) || isChordLine(clean)) return false;
+      if (/^(chords?|lyrics?|song\s*title|key|bpm)\s*:?$/i.test(clean)) return false;
+      return true;
+    }
+
+    function findMetadataClusters(lines) {
+      const nonEmpty = [];
+      lines.forEach((line, index) => {
+        const clean = normalizePastedLine(line);
+        if (clean) nonEmpty.push({ index, clean });
+      });
+
+      const metadata = nonEmpty.filter(item => isMetadataLine(item.clean));
+      if (!metadata.length) return [];
+
+      const clusters = [];
+      let current = [metadata[0]];
+
+      for (let i = 1; i < metadata.length; i++) {
+        const prevPos = nonEmpty.findIndex(x => x.index === current[current.length - 1].index);
+        const nextPos = nonEmpty.findIndex(x => x.index === metadata[i].index);
+        const logicalGap = nextPos - prevPos;
+        const between = nonEmpty.slice(prevPos + 1, nextPos);
+        const hasTitleBetween = between.some(item => isLikelySongTitle(item.clean));
+
+        if (logicalGap <= 2 && !hasTitleBetween) {
+          current.push(metadata[i]);
+        } else {
+          clusters.push(current);
+          current = [metadata[i]];
+        }
+      }
+      clusters.push(current);
+      return clusters;
+    }
+
+    function findPreviousNonEmptyIndex(lines, fromIndex) {
+      for (let i = fromIndex - 1; i >= 0; i--) {
+        if (normalizePastedLine(lines[i])) return i;
+      }
+      return -1;
+    }
+
+    function parseSongDocument(raw) {
+      const lines = String(raw || '').replace(/\r\n?/g, '\n').split('\n');
+      const clusters = findMetadataClusters(lines);
+
+      if (!clusters.length) {
+        return [{ title: '', key: '', bpm: '', body: lines.slice() }];
+      }
+
+      const songs = [];
+
+      for (let c = 0; c < clusters.length; c++) {
+        const cluster = clusters[c];
+        const firstMeta = cluster[0].index;
+        const lastMeta = cluster[cluster.length - 1].index;
+
+        let title = '';
+        const titleIndex = findPreviousNonEmptyIndex(lines, firstMeta);
+        if (titleIndex >= 0 && isLikelySongTitle(lines[titleIndex])) {
+          title = normalizePastedLine(lines[titleIndex]);
+        }
+
+        const nextCluster = clusters[c + 1];
+        const nextFirstMeta = nextCluster ? nextCluster[0].index : lines.length;
+        const nextTitleIndex = nextCluster ? findPreviousNonEmptyIndex(lines, nextFirstMeta) : -1;
+
+        const bodyStart = lastMeta + 1;
+        let bodyEnd = nextFirstMeta;
+        if (nextTitleIndex >= bodyStart && nextTitleIndex < nextFirstMeta && isLikelySongTitle(lines[nextTitleIndex])) {
+          bodyEnd = nextTitleIndex;
+        }
+
+        let body = lines.slice(bodyStart, bodyEnd);
+        let bpm = '';
+        let key = '';
+
+        for (const meta of cluster) {
+          const parsed = parseMetadataLine(meta.clean);
+          if (!parsed) continue;
+          if (parsed.type === 'bpm') bpm = parsed.value;
+          if (parsed.type === 'key') key = parsed.value;
+        }
+
+        songs.push({ title, key, bpm, body });
+      }
+
+      // Preserve genuine content before the first song title. Do not re-add the
+      // detected title itself, because it belongs in the metadata header.
+      const firstMeta = clusters[0][0].index;
+      const firstTitleIndex = findPreviousNonEmptyIndex(lines, firstMeta);
+      if (firstTitleIndex >= 0 && isLikelySongTitle(lines[firstTitleIndex])) {
+        const leading = lines.slice(0, firstTitleIndex);
+        if (leading.some(x => normalizePastedLine(x))) {
+          songs[0].body = leading.concat(songs[0].body);
+        }
+      } else {
+        const leading = lines.slice(0, firstMeta);
+        if (leading.some(x => normalizePastedLine(x))) {
+          songs[0].body = leading.concat(songs[0].body);
+        }
+      }
+
+      return songs;
+    }
+
+    function normalizeSectionHeader(line) {
+      const trimmed = normalizePastedLine(line);
+      if (!isSectionHeader(trimmed)) return null;
+
+      let header = trimmed.replace(/^\[/, '').replace(/\]$/, '').trim();
+      header = header.replace(/\s*:\s*$/, '').trim();
+      header = header.replace(/\s+/g, ' ');
+      return `[${header}]`;
+    }
+
+    function normalizeChordLine(line) {
+      return String(line || '')
+        .replace(/\u00A0/g, ' ')
+        .replace(/[\t ]+/g, ' ')
+        .replace(/\s*-\s*/g, '-')
+        .trim();
+    }
+
+    function splitInlineChordLineForFormatter(line) {
+      const trimmed = normalizePastedLine(line);
+      if (!trimmed) return null;
+
+      const bracketMatches = [...trimmed.matchAll(/\[([^\]]+)\]/g)];
+      if (bracketMatches.length) {
+        const valid = bracketMatches.map(m => m[1].trim()).filter(isChordToken);
+        if (valid.length === bracketMatches.length) {
+          const lyric = trimmed.replace(/\[[^\]]+\]/g, '').replace(/\s{2,}/g, ' ').trim();
+          return { chordLine: normalizeChordLine(valid.join(' ')), lyric };
+        }
+      }
+
+      const tokens = trimmed.split(/\s+/);
+      let count = 0;
+      while (count < tokens.length && isChordToken(tokens[count])) count++;
+      if (count > 0 && count < tokens.length) {
+        return {
+          chordLine: normalizeChordLine(tokens.slice(0, count).join(' ')),
+          lyric: tokens.slice(count).join(' ')
+        };
+      }
+      return null;
+    }
+
+    function mergeHyphenatedLyricLines(lines) {
+      const merged = [];
+      for (const rawLine of lines) {
+        const line = cleanLyricFragment(rawLine);
+        if (!line) continue;
+        if (merged.length && /-$/.test(merged[merged.length - 1]) && /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(line)) {
+          merged[merged.length - 1] = merged[merged.length - 1].slice(0, -1) + line;
+        } else if (merged.length && /\b(go|un|beau|wa|lo|fa|ri|re|ev|nev|to|an)-$/i.test(merged[merged.length - 1]) && /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(line)) {
+          merged[merged.length - 1] = merged[merged.length - 1].slice(0, -1) + line;
+        } else {
+          merged.push(line);
+        }
+      }
+      return merged;
+    }
+
+    function collectFormatterAtoms(raw) {
+      const sourceLines = String(raw || '').replace(/\r\n?/g, '\n').split('\n');
+      const atoms = [];
+      let activeChordLine = '';
+      let activeLyrics = [];
+      let activeSection = null;
+
+      const flushChunk = () => {
+        if (!activeChordLine && !activeLyrics.length) return;
+        const lyricLines = mergeHyphenatedLyricLines(activeLyrics);
+
+        if (activeChordLine) {
+          if (lyricLines.length) {
+            atoms.push({ chords: activeChordLine, lyric: lyricLines[0], section: activeSection });
+            for (let i = 1; i < lyricLines.length; i++) {
+              atoms.push({ chords: '', lyric: lyricLines[i], section: activeSection });
+            }
+          } else {
+            atoms.push({ chords: activeChordLine, lyric: '', section: activeSection });
+          }
+        } else {
+          for (const lyric of lyricLines) atoms.push({ chords: '', lyric, section: activeSection });
+        }
+
+        activeChordLine = '';
+        activeLyrics = [];
+      };
+
+      for (const rawLine of sourceLines) {
+        const line = normalizePastedLine(rawLine);
+        if (!line) continue;
+
+        const section = normalizeSectionHeader(line);
+        if (section) {
+          flushChunk();
+          atoms.push({ marker: 'section', text: section });
+          activeSection = section;
+          continue;
+        }
+
+        const combinedSection = line.match(/^((?:\[)?(?:Verse|Chorus|Bridge|Intro|Outro|Tag|Instrumental|Adlib|Ending|MEDLEY)[\s\d:]*)(?:\])?\s*:\s*(.+)$/i);
+        if (combinedSection && isChordLine(combinedSection[2])) {
+          flushChunk();
+          const header = '[' + combinedSection[1].replace(/^\[/, '').replace(/\]$/, '').trim() + ']';
+          atoms.push({ marker: 'section', text: header });
+          activeSection = header;
+          activeChordLine = normalizeChordLine(combinedSection[2]);
+          continue;
+        }
+
+        if (isBandCue(line)) {
+          flushChunk();
+          atoms.push({ marker: 'cue', text: line });
+          continue;
+        }
+
+        const inline = splitInlineChordLineForFormatter(line);
+        if (inline && inline.lyric) {
+          flushChunk();
+          atoms.push({ chords: inline.chordLine, lyric: cleanLyricFragment(inline.lyric), section: activeSection });
+          continue;
+        }
+
+        if (isChordLine(line)) {
+          if (activeChordLine && activeLyrics.length === 0) {
+            activeChordLine = (activeChordLine + ' ' + normalizeChordLine(line)).trim();
+          } else {
+            flushChunk();
+            activeChordLine = normalizeChordLine(line);
+          }
+          continue;
+        }
+
+        activeLyrics.push(cleanLyricFragment(line));
+      }
+
+      flushChunk();
+      return atoms.filter(a => a.marker || a.lyric || a.chords);
+    }
+
+    function mergeHyphenatedAtoms(atoms) {
+      const out = atoms.map(atom => ({ ...atom }));
+      for (let i = 0; i < out.length - 1; i++) {
+        const current = out[i];
+        const next = out[i + 1];
+        if (current.marker || next.marker || !current.lyric || !next.lyric) continue;
+        if (/-$/.test(current.lyric) && /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(next.lyric)) {
+          current.lyric = current.lyric.slice(0, -1) + next.lyric;
+          if (next.chords) current.chords = [current.chords, next.chords].filter(Boolean).join(' ');
+          out.splice(i + 1, 1);
+          i--;
+        }
+      }
+      return out;
+    }
+
+    function mergeFormatterAtoms(atoms, minChars) {
+      const out = atoms.map(atom => ({ ...atom, chords: atom.chords || '', lyric: atom.lyric || '' }));
+      const isPhrase = atom => !atom.marker && (atom.lyric || atom.chords);
+      const len = atom => lyricCharacterCount(atom.lyric);
+
+      const mergeInto = (target, source) => {
+        if (source.chords) target.chords = [target.chords, source.chords].filter(Boolean).join(' ');
+        if (source.lyric) target.lyric = [target.lyric, source.lyric].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+        if (source.section && !target.section) target.section = source.section;
+      };
+
+      const mergeBefore = (target, source) => {
+        if (source.chords) target.chords = [source.chords, target.chords].filter(Boolean).join(' ');
+        if (source.lyric) target.lyric = [source.lyric, target.lyric].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+        if (source.section && !target.section) target.section = source.section;
+      };
+
+      // First pass: short lyric fragments borrow the next chord when possible,
+      // so pasted charts such as "Bb / joy in chaos / I've got / Gm7 / peace..."
+      // become a readable chord + phrase pair.
+      for (let i = 0; i < out.length; i++) {
+        const current = out[i];
+        if (!isPhrase(current) || !current.lyric || len(current) >= minChars) continue;
+
+        let prev = i - 1;
+        while (prev >= 0 && !isPhrase(out[prev])) prev--;
+        let next = i + 1;
+        while (next < out.length && !isPhrase(out[next])) next++;
+
+        const prevBlocked = prev < 0 || out.slice(prev + 1, i).some(a => a.marker);
+        const nextBlocked = next >= out.length || out.slice(i + 1, next).some(a => a.marker);
+        const half = Math.max(1, minChars / 2);
+
+        if (!prevBlocked && current.chords && len(current) <= half) {
+          mergeInto(out[prev], current);
+          out.splice(i, 1);
+          i--;
+          continue;
+        }
+
+        if (!nextBlocked && out[next]) {
+          mergeBefore(out[next], current);
+          out.splice(i, 1);
+          i--;
+          continue;
+        }
+
+        if (!prevBlocked) {
+          mergeInto(out[prev], current);
+          out.splice(i, 1);
+          i--;
+        }
+      }
+
+      // Second pass: any remaining short lyric fragment is attached to the
+      // nearest chorded phrase, unless a section/cue boundary blocks it.
+      for (let i = 0; i < out.length; i++) {
+        if (!isPhrase(out[i]) || !out[i].lyric || out[i].chords || len(out[i]) >= minChars) continue;
+        let prev = i - 1;
+        while (prev >= 0 && !isPhrase(out[prev])) prev--;
+        let next = i + 1;
+        while (next < out.length && !isPhrase(out[next])) next++;
+
+        if (next < out.length && out[next].chords) {
+          mergeBefore(out[next], out[i]);
+          out.splice(i, 1);
+          i--;
+        } else if (prev >= 0 && out[prev].chords) {
+          mergeInto(out[prev], out[i]);
+          out.splice(i, 1);
+          i--;
+        }
+      }
+
+      return out;
+    }
+
+    function formatSongBody(bodyLines, minChars) {
+      const bodyText = bodyLines.join('\n');
+      const atoms = mergeHyphenatedAtoms(collectFormatterAtoms(bodyText));
+      const merged = mergeFormatterAtoms(atoms, minChars);
+      const output = [];
+
+      for (const atom of merged) {
+        if (atom.marker === 'section' || atom.marker === 'cue') {
+          if (output.length && output[output.length - 1] !== '') output.push('');
+          output.push(atom.text);
+          continue;
+        }
+        if (atom.chords) output.push(normalizeChordLine(atom.chords));
+        if (atom.lyric) output.push(cleanLyricFragment(atom.lyric));
+      }
+
+      return output.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    function formatWorshipTogetherText(raw, minChars = getMinimumLyricChars()) {
+      const songs = parseSongDocument(raw);
+      const formattedSongs = songs.map(song => ({
+        title: song.title,
+        key: song.key,
+        bpm: song.bpm,
+        body: formatSongBody(song.body, minChars)
+      })).filter(song => song.title || song.key || song.bpm || song.body);
+
+      const output = [];
+      formattedSongs.forEach((song, index) => {
+        if (index > 0 && output.length) output.push('', '');
+        if (song.title) output.push(song.title);
+        if (song.key) output.push(`Key of ${song.key}`);
+        if (song.bpm) output.push(`Bpm ${song.bpm}`);
+        if ((song.title || song.key || song.bpm) && song.body) output.push('');
+        if (song.body) output.push(song.body);
+      });
+
+      return {
+        text: output.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+        songs: formattedSongs
+      };
+    }
+
+    function applyFormattedSong(raw, showMessage = true) {
+      const result = formatWorshipTogetherText(raw, getMinimumLyricChars());
+      document.getElementById('songContent').value = result.text;
+      updatePreview();
+      if (showMessage) {
+        const count = result.songs.length;
+        showToast(count > 1
+          ? `${count} songs detected and formatted.`
+          : 'Song format cleaned and reorganized.');
+      }
+    }
+
+    function autoFormatSong(showMessage = true) {
+      applyFormattedSong(document.getElementById('songContent').value, showMessage);
     }
 
     // Base chord syntax used by the formatter.
@@ -877,41 +1086,47 @@ in Your ear`
     }
 
     function transpose(semitones) {
-      const currentKey = document.getElementById('songKey').value;
-      const currentSemi = noteToSemitone[currentKey] ?? 0;
-      let newSemi = (currentSemi + semitones) % 12;
-      if (newSemi < 0) newSemi += 12;
-
-      const preferFlats = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'].includes(flatScale[newSemi]);
-      const newKey = (preferFlats ? flatScale : sharpScale)[newSemi];
-      document.getElementById('songKey').value = newKey;
-
-      // Transpose lines in content
       const content = document.getElementById('songContent').value;
+      if (!content.trim()) return;
+
       const lines = content.split('\n');
+      let currentKey = '';
+
+      const keyLineRegex = /^(Key\s+of\s+)([A-G](?:#|b)?)(\s*)$/i;
+      const transposeRegex = /[A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*(?:\/[A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*)?/g;
+
       const transposedLines = lines.map(line => {
+        const keyMatch = line.trim().match(keyLineRegex);
+        if (keyMatch) {
+          currentKey = normalizeKeyName(keyMatch[2]);
+          const currentSemi = noteToSemitone[currentKey];
+          if (currentSemi !== undefined) {
+            let newSemi = (currentSemi + semitones) % 12;
+            if (newSemi < 0) newSemi += 12;
+            const preferFlats = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'].includes(currentKey) || ['Eb', 'Ab', 'Bb', 'Db', 'Gb'].includes(flatScale[newSemi]);
+            const newKey = (preferFlats ? flatScale : sharpScale)[newSemi];
+            currentKey = newKey;
+            return `${keyMatch[1]}${newKey}`;
+          }
+          return line;
+        }
+
         if (isChordLine(line)) {
-          // Replace chords in line while preserving spaces
-          return line.replace(/[A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*(?:\/[A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*)?/g, match => {
-            return transposeChord(match, semitones, preferFlats);
-          });
+          const preferFlats = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'].includes(currentKey);
+          return line.replace(transposeRegex, match => transposeChord(match, semitones, preferFlats));
         }
         return line;
       });
 
       document.getElementById('songContent').value = transposedLines.join('\n');
       updatePreview();
+      showToast('All detected songs transposed.');
     }
 
-    function onKeySelect(targetKey) {
-      // Calculate delta from current song title / header
-      const currentKey = document.getElementById('songKey').getAttribute('data-prev-key') || 'F';
-      const fromSemi = noteToSemitone[currentKey] ?? 0;
-      const toSemi = noteToSemitone[targetKey] ?? 0;
-      let delta = toSemi - fromSemi;
-      document.getElementById('songKey').setAttribute('data-prev-key', targetKey);
-      transpose(delta);
-    }
+    // Kept for compatibility with older browser state if the page was opened
+    // from a cached version. Metadata is now detected automatically, so there
+    // is no manual Key selector anymore.
+    function onKeySelect() {}
 
     function cleanChordSpacing() {
       const content = document.getElementById('songContent').value;
@@ -926,45 +1141,59 @@ in Your ear`
       updatePreview();
     }
 
-    function generateGDocHtml() {
-      const title = (document.getElementById('songTitle').value || 'UNTITLED').toUpperCase();
-      const key = document.getElementById('songKey').value || 'F';
-      const bpm = document.getElementById('songBpm').value || '75';
-      const content = document.getElementById('songContent').value;
-
+    function renderBodyHtml(content) {
       let html = '';
-      // Header in Cyan
-      html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ffff; font-weight:bold; color:#000000;">${escapeHtml(title)}</span></p>`;
-      html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ffff; font-weight:bold; color:#000000;">Key of ${escapeHtml(key)}</span></p>`;
-      html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ffff; font-weight:bold; color:#000000;">Bpm ${escapeHtml(bpm)}</span></p>`;
-      html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt; height:11pt;">&nbsp;</p>`;
+      const lines = String(content || '').split('\n');
 
-      const lines = content.split('\n');
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed) {
           html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt; height:11pt;">&nbsp;</p>`;
         } else if (isBandCue(line)) {
-          // Band Cue in Green
           html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ff00; font-weight:bold; color:#000000;">${escapeHtml(line)}</span></p>`;
         } else if (isSectionHeader(line)) {
-          // Section header in Yellow
           html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#ffff00; font-weight:bold; color:#000000;">${escapeHtml(line)}</span></p>`;
         } else if (isChordLine(line)) {
-          // Chord line strictly 1 space between each chord in Yellow
           const singleSpaced = line.trim().replace(/\s+/g, ' ');
           html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#ffff00; font-weight:bold; color:#000000;">${escapeHtml(singleSpaced)}</span></p>`;
         } else {
-          // Lyrics in plain Arial 11pt
           html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="color:#000000;">${escapeHtml(line)}</span></p>`;
         }
       }
+      return html;
+    }
+
+    function generateGDocHtml() {
+      const content = document.getElementById('songContent').value;
+      const songs = parseSongDocument(content).filter(song => song.title || song.key || song.bpm || song.body.some(x => normalizePastedLine(x)));
+      let html = '';
+
+      songs.forEach((song, index) => {
+        if (index > 0) {
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt; height:11pt;">&nbsp;</p>`;
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt; height:11pt;">&nbsp;</p>`;
+        }
+
+        if (song.title) {
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ffff; font-weight:bold; color:#000000;">${escapeHtml(song.title.toUpperCase())}</span></p>`;
+        }
+        if (song.key) {
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ffff; font-weight:bold; color:#000000;">Key of ${escapeHtml(song.key)}</span></p>`;
+        }
+        if (song.bpm) {
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ffff; font-weight:bold; color:#000000;">Bpm ${escapeHtml(song.bpm)}</span></p>`;
+        }
+        if (song.title || song.key || song.bpm) {
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt; height:11pt;">&nbsp;</p>`;
+        }
+        html += renderBodyHtml(formatSongBody(song.body, getMinimumLyricChars()));
+      });
 
       return html;
     }
 
     function escapeHtml(str) {
-      return str.replace(/&/g, '&amp;')
+      return String(str || '').replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
                 .replace(/ /g, '&nbsp;');
@@ -977,8 +1206,9 @@ in Your ear`
 
     async function copyForGoogleDocs() {
       cleanChordSpacing();
+      const content = document.getElementById('songContent').value;
       const gdocHtml = `<!DOCTYPE html><html><body>${generateGDocHtml()}</body></html>`;
-      const plainText = `${document.getElementById('songTitle').value.toUpperCase()}\nKey of ${document.getElementById('songKey').value}\nBpm ${document.getElementById('songBpm').value}\n\n${document.getElementById('songContent').value}`;
+      const plainText = content;
 
       try {
         const blobHtml = new Blob([gdocHtml], { type: 'text/html' });
@@ -988,7 +1218,6 @@ in Your ear`
         await navigator.clipboard.write(data);
         showToast();
       } catch (err) {
-        // Fallback for older clipboard access
         const listener = function(e) {
           e.clipboardData.setData('text/html', gdocHtml);
           e.clipboardData.setData('text/plain', plainText);
@@ -1001,18 +1230,29 @@ in Your ear`
       }
     }
 
-    function showToast() {
+    function showToast(message = 'Copied to Clipboard! Ready to paste directly into Google Docs.') {
       const toast = document.getElementById('toast');
+      toast.textContent = message;
       toast.style.display = 'block';
-      setTimeout(() => {
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
         toast.style.display = 'none';
       }, 3500);
     }
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('songKey').setAttribute('data-prev-key', 'F');
-      loadPreset('mighty');
+      const textarea = document.getElementById('songContent');
+      textarea.addEventListener('paste', (event) => {
+        const pasted = event.clipboardData?.getData('text/plain') || '';
+        if (!pasted) return;
+
+        event.preventDefault();
+        applyFormattedSong(pasted, false);
+        showToast('Pasted song automatically formatted.');
+      });
+
+      updatePreview();
     });
   </script>
 </body>
