@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worship Chords & Lyrics Formatter (Google Docs Ready)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --accent-cyan: #00ffff;
+      --accent-yellow: #ffff00;
+      --accent-green: #00ff00;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    header h1 {
+      font-size: 24px;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      background: #0284c7;
+      color: white;
+      font-size: 12px;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-weight: normal;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      color: white;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+
+    textarea {
+      font-family: "Courier New", Courier, monospace;
+      font-size: 13px;
+      resize: vertical;
+      min-height: 480px;
+      line-height: 1.4;
+      white-space: pre;
+    }
+
+    .controls-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: #334155;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #475569;
+    }
+
+    button.primary {
+      background: #0284c7;
+    }
+
+    button.primary:hover {
+      background: #0369a1;
+    }
+
+    button.success {
+      background: #16a34a;
+      font-weight: 600;
+    }
+
+    button.success:hover {
+      background: #15803d;
+    }
+
+    .preview-box {
+      background: #ffffff;
+      color: #000000;
+      border-radius: 8px;
+      padding: 36px 48px;
+      min-height: 520px;
+      max-height: 700px;
+      overflow-y: auto;
+      font-family: "Arial", sans-serif;
+      font-size: 11pt;
+      line-height: 1.25;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Google Docs Matchers */
+    .gdoc-cyan {
+      background-color: #00ffff;
+      color: #000000;
+      font-weight: bold;
+      font-family: "Arial", sans-serif;
+      font-size: 11pt;
+      padding: 0 1px;
+    }
+
+    .gdoc-yellow {
+      background-color: #ffff00;
+      color: #000000;
+      font-weight: bold;
+      font-family: "Arial", sans-serif;
+      font-size: 11pt;
+      padding: 0 1px;
+    }
+
+    .gdoc-green {
+      background-color: #00ff00;
+      color: #000000;
+      font-weight: bold;
+      font-family: "Arial", sans-serif;
+      font-size: 11pt;
+      padding: 0 1px;
+    }
+
+    .gdoc-lyrics {
+      color: #000000;
+      font-weight: normal;
+      font-family: "Arial", sans-serif;
+      font-size: 11pt;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      align-items: center;
+      background: #0f172a;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+    }
+
+    .instructions {
+      background: #0f172a;
+      border-left: 4px solid var(--primary);
+      padding: 12px 16px;
+      border-radius: 0 6px 6px 0;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .instructions ol {
+      margin-left: 18px;
+      margin-top: 6px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #10b981;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+      font-weight: 500;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Worship Song Chord & Lyric Formatter <span class="badge">Google Docs Sync</span></h1>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
+          Faithfully reproduces the "for edit" highlighting: Cyan header, Yellow chords/sections, Green band directives.
+        </p>
+      </div>
+      <div>
+        <label for="songPreset">Load Preloaded Song:</label>
+        <select id="songPreset" onchange="loadPreset(this.value)">
+          <option value="mighty">Mighty to Save (Key of F) - Hillsong</option>
+          <option value="mahal">Mahal na Mahal Kita Panginoon (Key of A)</option>
+          <option value="run">I Will Run to You (Key of E)</option>
+          <option value="love">I Love You Lord (Key of E)</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- Input Column -->
+      <div class="card">
+        <div class="card-title">
+          <span>Song Metadata & Chords</span>
+          <div class="controls-row">
+            <button onclick="cleanChordSpacing()" class="primary" title="Collapse spaces between chords to 1 space">🧹 1 Space Per Chord</button>
+            <button onclick="transpose(-1)" title="Transpose Down 1 Semitone">♭ -1</button>
+            <button onclick="transpose(1)" title="Transpose Up 1 Semitone">♯ +1</button>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div>
+            <label for="songTitle">Song Title</label>
+            <input type="text" id="songTitle" value="MIGHTY TO SAVE" oninput="updatePreview()">
+          </div>
+          <div>
+            <label for="songKey">Key</label>
+            <select id="songKey" onchange="onKeySelect(this.value)">
+              <option value="C">C</option>
+              <option value="C#">C# / Db</option>
+              <option value="D">D</option>
+              <option value="Eb">Eb / D#</option>
+              <option value="E">E</option>
+              <option value="F" selected>F</option>
+              <option value="F#">F# / Gb</option>
+              <option value="G">G</option>
+              <option value="Ab">Ab / G#</option>
+              <option value="A">A</option>
+              <option value="Bb">Bb / A#</option>
+              <option value="B">B</option>
+            </select>
+          </div>
+          <div>
+            <label for="songBpm">BPM</label>
+            <input type="text" id="songBpm" value="75" oninput="updatePreview()">
+          </div>
+        </div>
+
+        <div>
+          <label for="songContent">Chords & Lyrics Text</label>
+          <textarea id="songContent" oninput="updatePreview()"></textarea>
+        </div>
+
+        <div class="instructions">
+          <strong>Tip for New Songs:</strong>
+          Put chords directly on the line above their lyrics. Section tags (like <code>[Verse]</code>, <code>[Chorus]</code>, <code>Intro:</code>) are auto-highlighted in yellow. Band cues in parentheses (like <code>(Build up)</code> or <code>(Pasok Drums)</code>) are auto-highlighted in green!
+        </div>
+      </div>
+
+      <!-- Output / Preview Column -->
+      <div class="card">
+        <div class="card-title">
+          <span>Google Docs Live Preview</span>
+          <button class="success" onclick="copyForGoogleDocs()">
+            📋 Copy for Google Docs
+          </button>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-color" style="background: #00ffff;"></div>
+            <span>Cyan: Title / Key / BPM</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ffff00;"></div>
+            <span>Yellow: Chords & Section Tags</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #00ff00;"></div>
+            <span>Green: Dynamic Cues</span>
+          </div>
+        </div>
+
+        <div id="previewArea" class="preview-box">
+          <!-- Live rendered preview -->
+        </div>
+
+        <div class="instructions">
+          <strong>How to Paste into Google Docs:</strong>
+          <ol>
+            <li>Click <strong>"Copy for Google Docs"</strong> above.</li>
+            <li>In your Google Doc, click the <strong>+</strong> button on the left sidebar to add a new tab named <strong>testing</strong>.</li>
+            <li>Click inside the document and press <kbd>Ctrl</kbd> + <kbd>V</kbd>.</li>
+            <li>All colors, bolding, and exact 11pt Arial styles are instantly applied!</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Copied to Clipboard! Ready to paste directly into Google Docs.</div>
+
+  <script>
+    const chromaticScale = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+    const sharpScale     = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const flatScale      = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+    const noteToSemitone = {
+      'C': 0, 'B#': 0,
+      'C#': 1, 'Db': 1,
+      'D': 2,
+      'D#': 3, 'Eb': 3,
+      'E': 4, 'Fb': 4,
+      'F': 5, 'E#': 5,
+      'F#': 6, 'Gb': 6,
+      'G': 7,
+      'G#': 8, 'Ab': 8,
+      'A': 9,
+      'A#': 10, 'Bb': 10,
+      'B': 11, 'Cb': 11
+    };
+
+    const songDatabase = {
+      mighty: {
+        title: "MIGHTY TO SAVE",
+        key: "F",
+        bpm: "75",
+        content: `(Keyboard / Pads / Acoustic)
+Intro:
+Bb2 F Dm7 Csus (2x)
+
+
+[Verse 1]
+Bb2 F
+Everyone needs compassion, love that's never failing
+Dm7 Csus
+Let mercy fall on me
+Bb2 F
+Everyone needs forgiveness, the kindness of a Saviour
+Dm7 Csus Bb2 Csus Bb2 Csus
+The hope of nations
+
+
+(Pasok Bass and Drums)
+[Chorus]
+F Csus
+Saviour, He can move the mountains
+Bb2 F
+My God is mighty to save
+Dm7 Csus
+He is mighty to save
+F Csus
+Forever, Author of salvation
+Bb2 F
+He rose and conquered the grave
+Dm7 Csus
+Jesus conquered the grave
+
+
+[Verse 2]
+Bb2 F
+So take me as You find me, all my fears and failures
+Dm7 Csus
+Fill my life again
+Bb2 F
+I give my life to follow, everything I believe in
+Dm7 Csus Bb2 Csus Bb2 Csus
+Now I surrender
+
+
+(Full Band)
+[Chorus]
+F Csus
+Saviour, He can move the mountains
+Bb2 F
+My God is mighty to save
+Dm7 Csus
+He is mighty to save
+F Csus
+Forever, Author of salvation
+Bb2 F
+He rose and conquered the grave
+Dm7 Csus
+Jesus conquered the grave
+
+
+[Chorus]
+F Csus
+Saviour, He can move the mountains
+Bb2 F
+My God is mighty to save
+Dm7 Csus
+He is mighty to save
+F Csus
+Forever, Author of salvation
+Bb2 F
+He rose and conquered the grave
+Dm7 Csus
+Jesus conquered the grave
+
+
+(Build up)
+[Bridge]
+Bb2 F Csus
+Shine your light and let the whole world see
+Dm7
+We're singing
+Bb2 F Csus Dm7
+For the glory of the risen King, Jesus
+
+
+(Full Band)
+[Bridge]
+Bb2 F Csus
+Shine your light and let the whole world see
+Dm7
+We're singing
+Bb2 F Csus Dm7
+For the glory of the risen King, Jesus
+
+
+[Chorus]
+F Csus
+Saviour, He can move the mountains
+Bb2 F
+My God is mighty to save
+Dm7 Csus
+He is mighty to save
+F Csus
+Forever, Author of salvation
+Bb2 F
+He rose and conquered the grave
+Dm7 Csus Bb2ll Fll
+Jesus conquered the grave
+
+
+(Soft)
+Outro:
+Bb2 F Dm7 Csus
+Bb2ll`
+      },
+      mahal: {
+        title: "MAHAL NA MAHAL KITA PANGINOON",
+        key: "A",
+        bpm: "135",
+        content: `Intro
+A C#m-D D# E F F#m E/G# 
+Bm C#m-D (3x) E
+
+
+[Verse]
+A C#m D (2x)
+Mahal na mahal kita Panginoon
+A C#m D-G-E
+Mahal na mahal kita Panginoon
+D  Dm 
+Kailanmay di kita ipagpapalit
+C#m  F#m
+Pagkat sa piling mo’y langit
+Bm C#m D  
+Mahal na mahal kita Panginoon
+
+
+A C#m D 
+
+
+[Verse]
+A C#m D (2x)
+Mahal na mahal kita Panginoon
+A C#m D-G-E
+Mahal na mahal kita Panginoon
+D Dm
+Kailanmay di kita ipagpapalit
+C#m F#m
+Pagkat sa piling mo’y langit
+Bm C#m D A
+Mahal na mahal kita Panginoon
+ 
+
+[Chorus]
+C#m F#m Bm E
+Habangbuhay papupurihan ka
+C#m F#m  Bm E
+Habangbuhay maglilingkod say o
+C#m F#m Bmll E
+Habangbuhay pag-ibig ko say’oy iaalay
+
+
+[Verse]
+A C#m D (2x)
+Mahal na mahal kita Panginoon
+A C#m D-G-E
+Mahal na mahal kita Panginoon
+D  Dm 
+Kailanmay di kita ipagpapalit
+C#m  F#m
+Pagkat sa piling mo’y langit
+Bm C#m D A
+Mahal na mahal kita Panginoon
+ 
+
+[Chorus]
+C#m F#m Bm E
+Habangbuhay papupurihan ka
+C#m F#m  Bm E
+Habangbuhay maglilingkod say o
+C#m F#m Bmll Ell
+Habangbuhay pag-ibig ko say’oy iaalay
+
+
+[Chorus]
+C#m F#m Bm E
+Habangbuhay papupurihan ka
+C#m F#m  Bm E
+Habangbuhay maglilingkod say o
+C#m F#m Bmll Ell
+Habangbuhay pag-ibig ko say’oy iaalay
+
+
+[Verse]
+A C#m D (2x)
+Mahal na mahal kita Panginoon
+A C#m D-G-E
+Mahal na mahal kita Panginoon
+D  Dm 
+Kailanmay di kita ipagpapalit
+C#m  F#m
+Pagkat sa piling mo’y langit
+Bm C#m D  
+Mahal na mahal kita 
+Bm C#m D E
+Mahal na mahal kita 
+Bm C#m Dll Ell
+Mahal na mahal kita Panginoon
+
+
+Outro:
+A C#m-D D# E F F#m E/G# 
+Bm C#m-D (2x) Ell All`
+      },
+      run: {
+        title: "I WILL RUN TO YOU",
+        key: "E",
+        bpm: "81",
+        content: `Verse 1: 
+G C/G D/G G 
+Your eye is on the sparrow 
+ C/G D/F# Em Em/D 
+And Your hand, it comforts me 
+F/C C 
+From the ends of the Earth 
+D D/F#  G 
+to the depth of my    heart 
+C Am Dsus D 
+Let Your mercy and strength be seen 
+
+
+Verse 2: 
+C C/D G G/B 
+You call me to Your purpose 
+C D Em Em/D 
+As angels understand 
+F/C C 
+For Your glo - ry, 
+D D/F# G 
+may You draw all   men 
+G/B C D G 
+As Your love and grace demand 
+
+
+Chorus: 
+C/G D/G G 
+And I will run   to   YOU, 
+D/F#  B/D#  Em 
+To Your words  of    truth 
+Am7 G/B 
+Not by might, not by power 
+C A/C# D 
+But by the spir - it    of   God 
+G C/G D/G G 
+Yes I will run   the   race, 
+D/F# B/D# Em 
+'Till I see    Your    face 
+Am7 G/B Dsus Gsus G 
+Oh let me live in the glory of Your grace`
+      },
+      love: {
+        title: "I LOVE YOU LORD",
+        key: "E",
+        bpm: "136",
+        content: `(Keyboard / Pads / Acoustic)
+Verse:
+B F#/A# G#m
+I love You Lord, and I lift my voice
+E B/D# C#m F#sus F#
+To worship You, O my soul rejoice
+B E/B F#/A# G#m
+Take joy my King     in what You hear
+E B/D# F#
+Let it be a sweet, sweet sound
+E B
+in Your ear
+ 
+
+(Pasok Bass and E-Guitar)
+Verse:
+B F#/A# G#m
+I love You Lord, and I lift my voice
+E B/D# C#m F#sus F#
+To worship You, O my soul rejoice
+B E/B F#/A# G#m
+Take joy my King     in what You hear
+(Pasok Drums)
+E B/D# F#
+Let it be a sweet, sweet sound
+E B/D# F#
+Let it be a sweet, sweet sound
+G#m7 E B/D# F#
+Let it be a sweet, sweet sound
+G#m7 E
+in your ear
+
+
+Instrumental 1 (3x)
+E B/D# F# G#m
+ 
+
+[Bridge]
+E B/D# F# G#m
+We love You, adore You, Je-sus
+E B/D# F# G#m
+Yes,we love You, adore You, Je-sus
+E B/D# F# G#m
+Yes,we love You, adore You, Je-sus
+E B/D# F# G#m
+Yes,we love You, adore You, Jesus
+
+
+(Full Band)
+Verse:
+B F#/A# G#m
+I love You Lord, and I lift my voice
+E B/D# C#m F#sus F#
+To worship You, O my soul rejoice
+B E/B F#/A# G#m
+Take joy my King     in what You hear
+E B/D# F#
+Let it be a sweet, sweet sound
+E B/D# F#
+Let it be a sweet, sweet sound
+G#m7 E B/D# F#
+Let it be a sweet, sweet sound
+G#m7 E
+in your ear
+
+
+(Soft)
+Instrumental 1 (3x)
+E B/D# F# G#m
+
+
+[Chorus]
+B F#/A# G#m
+I love You Lord, and I lift my voice
+E B/D# C#m F#sus F#
+To worship You, O my soul rejoice
+B E/B F#/A# G#m
+Take joy my King     in what You hear
+E B/D# F#
+Let it be a sweet, sweet sound
+E B
+in Your ear`
+      }
+    };
+
+    function loadPreset(key) {
+      const song = songDatabase[key];
+      if (!song) return;
+      document.getElementById('songTitle').value = song.title;
+      document.getElementById('songKey').value = song.key;
+      document.getElementById('songBpm').value = song.bpm;
+      document.getElementById('songContent').value = song.content;
+      updatePreview();
+    }
+
+    function isBandCue(line) {
+      const trimmed = line.trim();
+      return /^\((Pasok|Keyboard|Pads|Acoustic|Build up|Full Band|Soft|slowly Build up).*\)$/i.test(trimmed) ||
+             /^\(soft lang muna\)$/i.test(trimmed) ||
+             /^\(Build up\)$/i.test(trimmed) ||
+             /^\(Full Band\)$/i.test(trimmed) ||
+             /^\(Soft\)$/i.test(trimmed);
+    }
+
+    function isSectionHeader(line) {
+      const trimmed = line.trim();
+      return /^\[?(Verse|Chorus|Bridge|Intro|Outro|Tag|Instrumental|Adlib|Ending|MEDLEY)[\s0-9:]*\]?$/i.test(trimmed);
+    }
+
+    function isChordToken(token) {
+      let clean = token.trim();
+
+      // Allow common worship-chart duration/bar markers after a chord:
+      // G|| = hold G through the bar(s), Gll = hold G, G(2x) = repeat.
+      clean = clean.replace(/(?:ll|l|\([0-9]+x\)|\|)+$/i, '');
+      clean = clean.replace(/^[\|\/]+/, '');
+      if (!clean) return false;
+
+      // A hyphen between chord names means a chord change within the count,
+      // e.g. D-A or C#m-D. Treat each side as its own chord.
+      const chordRegex = /^[A-G](b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*(?:\/[A-G](b|#)?)?$/;
+      const chordParts = clean.split('-');
+
+      return chordParts.every(part => part && chordRegex.test(part));
+    }
+
+    function isChordLine(line) {
+      const trimmed = line.trim();
+      if (!trimmed) return false;
+      if (isBandCue(line) || isSectionHeader(line)) return false;
+
+      // Split into words
+      const tokens = trimmed.split(/\s+/).filter(t => t.length > 0);
+      if (tokens.length === 0) return false;
+
+      let chordCount = 0;
+      for (const t of tokens) {
+        if (isChordToken(t) || /^(\||-|\/|\([0-9]+x\)|(2x)|(3x))$/.test(t)) {
+          chordCount++;
+        }
+      }
+
+      // If at least 60% of tokens look like chords/bars, it's a chord line
+      return (chordCount / tokens.length) >= 0.6;
+    }
+
+    function transposeChord(chord, semitones, preferFlats) {
+      // Split slash chords
+      return chord.replace(/([A-G][b#]?)(.*)/, (match, root, ext) => {
+        let slashPart = '';
+        if (ext.includes('/')) {
+          const parts = ext.split('/');
+          ext = parts[0];
+          const slashBass = parts[1];
+          slashPart = '/' + transposeSingleNote(slashBass, semitones, preferFlats);
+        }
+        const transposedRoot = transposeSingleNote(root, semitones, preferFlats);
+        return transposedRoot + ext + slashPart;
+      });
+    }
+
+    function transposeSingleNote(note, semitones, preferFlats) {
+      const currentSemi = noteToSemitone[note];
+      if (currentSemi === undefined) return note;
+      let targetSemi = (currentSemi + semitones) % 12;
+      if (targetSemi < 0) targetSemi += 12;
+
+      const scale = preferFlats ? flatScale : sharpScale;
+      return scale[targetSemi];
+    }
+
+    function transpose(semitones) {
+      const currentKey = document.getElementById('songKey').value;
+      const currentSemi = noteToSemitone[currentKey] ?? 0;
+      let newSemi = (currentSemi + semitones) % 12;
+      if (newSemi < 0) newSemi += 12;
+
+      const preferFlats = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb'].includes(flatScale[newSemi]);
+      const newKey = (preferFlats ? flatScale : sharpScale)[newSemi];
+      document.getElementById('songKey').value = newKey;
+
+      // Transpose lines in content
+      const content = document.getElementById('songContent').value;
+      const lines = content.split('\n');
+      const transposedLines = lines.map(line => {
+        if (isChordLine(line)) {
+          // Replace chords in line while preserving spaces
+          return line.replace(/[A-G][b#]?(?:maj|min|m|M|\+|-|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*(?:\/[A-G][b#]?)?/g, match => {
+            return transposeChord(match, semitones, preferFlats);
+          });
+        }
+        return line;
+      });
+
+      document.getElementById('songContent').value = transposedLines.join('\n');
+      updatePreview();
+    }
+
+    function onKeySelect(targetKey) {
+      // Calculate delta from current song title / header
+      const currentKey = document.getElementById('songKey').getAttribute('data-prev-key') || 'F';
+      const fromSemi = noteToSemitone[currentKey] ?? 0;
+      const toSemi = noteToSemitone[targetKey] ?? 0;
+      let delta = toSemi - fromSemi;
+      document.getElementById('songKey').setAttribute('data-prev-key', targetKey);
+      transpose(delta);
+    }
+
+    function cleanChordSpacing() {
+      const content = document.getElementById('songContent').value;
+      const lines = content.split('\n');
+      const cleaned = lines.map(line => {
+        if (isChordLine(line)) {
+          return line.trim().replace(/\s+/g, ' ');
+        }
+        return line;
+      });
+      document.getElementById('songContent').value = cleaned.join('\n');
+      updatePreview();
+    }
+
+    function generateGDocHtml() {
+      const title = (document.getElementById('songTitle').value || 'UNTITLED').toUpperCase();
+      const key = document.getElementById('songKey').value || 'F';
+      const bpm = document.getElementById('songBpm').value || '75';
+      const content = document.getElementById('songContent').value;
+
+      let html = '';
+      // Header in Cyan
+      html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ffff; font-weight:bold; color:#000000;">${escapeHtml(title)}</span></p>`;
+      html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ffff; font-weight:bold; color:#000000;">Key of ${escapeHtml(key)}</span></p>`;
+      html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ffff; font-weight:bold; color:#000000;">Bpm ${escapeHtml(bpm)}</span></p>`;
+      html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt; height:11pt;">&nbsp;</p>`;
+
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt; height:11pt;">&nbsp;</p>`;
+        } else if (isBandCue(line)) {
+          // Band Cue in Green
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#00ff00; font-weight:bold; color:#000000;">${escapeHtml(line)}</span></p>`;
+        } else if (isSectionHeader(line)) {
+          // Section header in Yellow
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#ffff00; font-weight:bold; color:#000000;">${escapeHtml(line)}</span></p>`;
+        } else if (isChordLine(line)) {
+          // Chord line strictly 1 space between each chord in Yellow
+          const singleSpaced = line.trim().replace(/\s+/g, ' ');
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="background-color:#ffff00; font-weight:bold; color:#000000;">${escapeHtml(singleSpaced)}</span></p>`;
+        } else {
+          // Lyrics in plain Arial 11pt
+          html += `<p style="margin:0; padding:0; line-height:1.15; font-family:'Arial', sans-serif; font-size:11pt;"><span style="color:#000000;">${escapeHtml(line)}</span></p>`;
+        }
+      }
+
+      return html;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/ /g, '&nbsp;');
+    }
+
+    function updatePreview() {
+      const previewArea = document.getElementById('previewArea');
+      previewArea.innerHTML = generateGDocHtml();
+    }
+
+    async function copyForGoogleDocs() {
+      cleanChordSpacing();
+      const gdocHtml = `<!DOCTYPE html><html><body>${generateGDocHtml()}</body></html>`;
+      const plainText = `${document.getElementById('songTitle').value.toUpperCase()}\nKey of ${document.getElementById('songKey').value}\nBpm ${document.getElementById('songBpm').value}\n\n${document.getElementById('songContent').value}`;
+
+      try {
+        const blobHtml = new Blob([gdocHtml], { type: 'text/html' });
+        const blobText = new Blob([plainText], { type: 'text/plain' });
+        const data = [new ClipboardItem({ 'text/html': blobHtml, 'text/plain': blobText })];
+
+        await navigator.clipboard.write(data);
+        showToast();
+      } catch (err) {
+        // Fallback for older clipboard access
+        const listener = function(e) {
+          e.clipboardData.setData('text/html', gdocHtml);
+          e.clipboardData.setData('text/plain', plainText);
+          e.preventDefault();
+        };
+        document.addEventListener('copy', listener);
+        document.execCommand('copy');
+        document.removeEventListener('copy', listener);
+        showToast();
+      }
+    }
+
+    function showToast() {
+      const toast = document.getElementById('toast');
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3500);
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('songKey').setAttribute('data-prev-key', 'F');
+      loadPreset('mighty');
+    });
+  </script>
+</body>
+</html>
