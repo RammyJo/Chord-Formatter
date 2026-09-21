@@ -795,21 +795,35 @@ in Your ear`
       return /^\[?(Verse|Chorus|Bridge|Intro|Outro|Tag|Instrumental|Adlib|Ending|MEDLEY)[\s0-9:]*\]?$/i.test(trimmed);
     }
 
+    // Base chord syntax used by the formatter.
+    // Supports normal chords (G, C#m, F#sus4, etc.) and slash chords
+    // where the slash side can itself be a chord, e.g. G/B, D/F#, G/Em, D/F#m.
+    const chordBodyRegex = /^[A-G](b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*$/;
+
+    function isChordBody(value) {
+      return chordBodyRegex.test(value);
+    }
+
     function isChordToken(token) {
       let clean = token.trim();
 
       // Allow common worship-chart duration/bar markers after a chord:
       // G|| = hold G through the bar(s), Gll = hold G, G(2x) = repeat.
       clean = clean.replace(/(?:ll|l|\([0-9]+x\)|\|)+$/i, '');
-      clean = clean.replace(/^[\|\/]+/, '');
+      clean = clean.replace(/^\|+|\|+$/g, '');
       if (!clean) return false;
 
       // A hyphen between chord names means a chord change within the count,
-      // e.g. D-A or C#m-D. Treat each side as its own chord.
-      const chordRegex = /^[A-G](b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*(?:\/[A-G](b|#)?)?$/;
+      // e.g. D-A or C#m-D. Each side may also be a slash chord.
       const chordParts = clean.split('-');
 
-      return chordParts.every(part => part && chordRegex.test(part));
+      return chordParts.every(part => {
+        if (!part) return false;
+        const slashParts = part.split('/');
+        // More than one slash is not valid chord notation for this formatter.
+        if (slashParts.length > 2) return false;
+        return slashParts.every(isChordBody);
+      });
     }
 
     function isChordLine(line) {
@@ -833,17 +847,22 @@ in Your ear`
     }
 
     function transposeChord(chord, semitones, preferFlats) {
-      // Split slash chords
-      return chord.replace(/([A-G][b#]?)(.*)/, (match, root, ext) => {
-        let slashPart = '';
-        if (ext.includes('/')) {
-          const parts = ext.split('/');
-          ext = parts[0];
-          const slashBass = parts[1];
-          slashPart = '/' + transposeSingleNote(slashBass, semitones, preferFlats);
-        }
+      // Split slash chords. The slash side may be a note (G/B) or a full
+      // chord body (G/Em, D/F#m). Transpose both chord bodies independently.
+      const slashParts = chord.split('/');
+
+      if (slashParts.length === 2 && isChordBody(slashParts[0]) && isChordBody(slashParts[1])) {
+        return transposeChordBody(slashParts[0], semitones, preferFlats) + '/' +
+               transposeChordBody(slashParts[1], semitones, preferFlats);
+      }
+
+      return transposeChordBody(chord, semitones, preferFlats);
+    }
+
+    function transposeChordBody(chordBody, semitones, preferFlats) {
+      return chordBody.replace(/^([A-G](?:b|#)?)(.*)$/, (match, root, ext) => {
         const transposedRoot = transposeSingleNote(root, semitones, preferFlats);
-        return transposedRoot + ext + slashPart;
+        return transposedRoot + ext;
       });
     }
 
@@ -873,7 +892,7 @@ in Your ear`
       const transposedLines = lines.map(line => {
         if (isChordLine(line)) {
           // Replace chords in line while preserving spaces
-          return line.replace(/[A-G][b#]?(?:maj|min|m|M|\+|-|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*(?:\/[A-G][b#]?)?/g, match => {
+          return line.replace(/[A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*(?:\/[A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|[0-9]+|add[0-9]+)*)?/g, match => {
             return transposeChord(match, semitones, preferFlats);
           });
         }
