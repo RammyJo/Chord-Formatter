@@ -648,12 +648,12 @@
             <option value="">Set key</option>
             <option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option>
           </select>
-          <button type="button" onclick="applyIsolatedSong()">Apply Back</button>
+          <button type="button" onclick="applyIsolatedSong()">Save to Set</button>
         </div>
         <div class="isolation-secondary">
           <button type="button" onclick="cancelIsolation()">Cancel</button>
         </div>
-        <div class="tool-help"><strong>Use:</strong> Select a song → <strong>Isolate</strong> → transpose/edit → <strong>Apply Back</strong>. Only the isolated song is changed.</div>
+        <div class="tool-help"><strong>Use:</strong> Select a song → <strong>Isolate</strong> → transpose/edit → <strong>Save to Set</strong>. Only that song is changed.</div>
         <div id="isolationStatus" class="status-text"></div>
       </div>
     </div>
@@ -1246,6 +1246,60 @@
       return transposeSingleChordName(value, semitones, preferFlats);
     }
 
+    function isPipeChordLine(line){
+      const t=normalizePastedLine(line);
+      if(!t || isBandCue(t) || isSectionHeader(t) || isRepeatDirective(t) || parseMetadataLine(t)) return false;
+      if(!(t.includes('|') || t.includes('/'))) return false;
+      const tokens=t.split(/\s+/).filter(Boolean);
+      if(!tokens.length) return false;
+      let chordish=0, meaningful=0;
+      for(const token of tokens){
+        const cleaned=cleanChordToken(token);
+        if(!cleaned || /^[|\/]+$/.test(cleaned)) continue;
+        meaningful++;
+        if(isChordToken(token)) chordish++;
+      }
+      return meaningful>0 && chordish===meaningful;
+    }
+
+    function transposeChordMarkup(line,semitones,preferFlats){
+      return String(line).replace(/\[([^\]]+)\]/g,(m,ch)=>isChordToken(ch)?`[${transposeChord(ch,semitones,preferFlats)}]`:m);
+    }
+
+    function transposeChordPrefix(line,semitones,preferFlats){
+      const t=normalizePastedLine(line);
+      if(!t) return line;
+      const parts=t.split(/\s+/);
+      let n=0;
+      while(n<parts.length && isChordToken(parts[n])) n++;
+      if(n>0 && n<parts.length){
+        return parts.slice(0,n).map(x=>transposeChord(x,semitones,preferFlats)).join(' ')+' '+parts.slice(n).join(' ');
+      }
+      return line;
+    }
+
+    function transposeChordRowsInLine(line,semitones,preferFlats){
+      const normalized=normalizePastedLine(line);
+      if(!normalized) return line;
+      // Pure chord rows, including bar notation used in Intro/Interlude.
+      if(isChordLine(normalized) || isPipeChordLine(normalized)) {
+        return normalized.split(/(\s+)/).map(part=>/\s+/.test(part)?part:transposeChord(part,semitones,preferFlats)).join('');
+      }
+
+      // Labels such as "Intro: C G Am" or "Adlib: Gm F". Preserve the label.
+      const labeled=normalized.match(/^(\[?(?:Intro|Interlude|Adlib|Vamp|Instrumental|Outro|Tag|Ending)[^:]*\]?\s*:)\s*(.+)$/i);
+      if(labeled && (isChordLine(labeled[2]) || isPipeChordLine(labeled[2]))) {
+        return labeled[1]+' '+labeled[2].split(/(\s+)/).map(part=>/\s+/.test(part)?part:transposeChord(part,semitones,preferFlats)).join('');
+      }
+
+      // Bracketed inline chords such as [G]Amazing Grace.
+      let out=transposeChordMarkup(line,semitones,preferFlats);
+
+      // Prefix chords followed immediately by lyric text.
+      const prefixed=transposeChordPrefix(out,semitones,preferFlats);
+      return prefixed;
+    }
+
     function transpose(semitones){
       const raw=document.getElementById('songContent').value;
       const keyMatches=[...raw.matchAll(/^Key\s+of\s+([A-G](?:#|b)?)\s*$/gim)];
@@ -1256,10 +1310,9 @@
       const newKey=(preferFlats?flatScale:sharpScale)[target];
 
       const lines=raw.split('\n').map(line=>{
-        if (isChordLine(line)) {
-          return line.split(/(\s+)/).map(part=>/\s+/.test(part)?part:transposeChord(part,semitones,preferFlats)).join('');
-        }
-        return line.replace(/^(Key\s+of\s+)[A-G](?:#|b)?\s*$/i,`$1${newKey}`);
+        if (/^\s*Key\s+of\s+[A-G](?:#|b)?\s*$/i.test(line)) return line.replace(/^([\s]*Key\s+of\s+)[A-G](?:#|b)?\s*$/i,`$1${newKey}`);
+        if (isBandCue(line) || isSectionHeader(line) || isRepeatDirective(line) || parseMetadataLine(line)) return line;
+        return transposeChordRowsInLine(line,semitones,preferFlats);
       });
       setEditor(lines.join('\n'));
     }
@@ -1319,21 +1372,86 @@
 
     let isolatedSongState=null;
     function canonicalSongText(song){ const a=[]; if(song.title)a.push(song.title); if(song.bpm)a.push(`Bpm: ${song.bpm}`); if(song.key)a.push(`Key of ${song.key}`); if(song.title||song.bpm||song.key) a.push(''); if(song.body?.length)a.push(...song.body); return a.join('\n').trim(); }
+
+    function parseSongDocumentWithRanges(raw){
+      const lines=String(raw||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').split('\n');
+      const nonEmpty=[];
+      lines.forEach((l,i)=>{ const c=normalizePastedLine(l); if(c) nonEmpty.push({i,c}); });
+      const headers=[];
+      for(let n=0;n<nonEmpty.length;n++){
+        const meta1=parseMetadataLine(nonEmpty[n].c); if(!meta1) continue;
+        let meta2=null,j2=-1;
+        for(let j=n+1;j<nonEmpty.length && j<=n+2;j++){ const m=parseMetadataLine(nonEmpty[j].c); if(m && m.type!==meta1.type){meta2=m;j2=j;break;} }
+        if(!meta2) continue;
+        const ti=n-1; if(ti<0 || !isLikelySongTitle(nonEmpty[ti].c)) continue;
+        const bpm=meta1.type==='bpm'?meta1.value:meta2.type==='bpm'?meta2.value:'';
+        const key=meta1.type==='key'?meta1.value:meta2.type==='key'?meta2.value:'';
+        const metaEnd=Math.max(nonEmpty[n].i,nonEmpty[j2].i);
+        if(!headers.some(h=>h.titleIndex===nonEmpty[ti].i)) headers.push({title:nonEmpty[ti].c,titleIndex:nonEmpty[ti].i,metaEnd,bpm,key});
+      }
+      if(!headers.length) return [{title:'',bpm:'',key:'',body:lines.slice(),startLine:0,endLine:lines.length}];
+      return headers.map((h,i)=>{ const next=headers[i+1]; return {title:h.title,bpm:h.bpm,key:h.key,body:lines.slice(h.metaEnd+1,next?next.titleIndex:lines.length),startLine:h.titleIndex,endLine:next?next.titleIndex:lines.length}; });
+    }
+
     function refreshSongSelector(){
       const s=document.getElementById('songSelector'); if(!s)return;
-      const songs=parseSongDocument(document.getElementById('songContent').value).filter(x=>x.title||x.key||x.bpm||x.body.some(y=>normalizePastedLine(y)));
+      const songs=parseSongDocumentWithRanges(document.getElementById('songContent').value).filter(x=>x.title||x.key||x.bpm||x.body.some(y=>normalizePastedLine(y)));
       s.innerHTML=songs.length?songs.map((x,i)=>`<option value="${i}">${i+1}. ${escapeHtml(x.title||`Song ${i+1}`)}</option>`).join(''):'<option value="">No songs detected yet</option>';
+      if(isolatedSongState) s.disabled=true;
     }
+
     function isolateSelectedSong(){
-      const raw=document.getElementById('songContent').value; const songs=parseSongDocument(raw).filter(x=>x.title||x.key||x.bpm||x.body.some(y=>normalizePastedLine(y))); const i=Number(document.getElementById('songSelector').value); if(!songs[i]){setIsolationStatus('No song is available to isolate.',true);return;}
-      isolatedSongState={original:raw,songs:songs.map(x=>({...x,body:[...x.body]})),index:i}; setEditor(canonicalSongText(songs[i])); document.getElementById('isolatedKey').value=songs[i].key||''; setIsolationStatus(`ISOLATED: ${songs[i].title||`Song ${i+1}`}. Transpose and edit only this song, then click Apply Back.`);
+      if(isolatedSongState){setIsolationStatus('Finish or cancel the current isolation first.',true);return;}
+      const raw=document.getElementById('songContent').value;
+      const songs=parseSongDocumentWithRanges(raw).filter(x=>x.title||x.key||x.bpm||x.body.some(y=>normalizePastedLine(y)));
+      const i=Number(document.getElementById('songSelector').value);
+      if(!songs[i]){setIsolationStatus('No song is available to isolate.',true);return;}
+      isolatedSongState={original:raw,startLine:songs[i].startLine,endLine:songs[i].endLine,index:i};
+      setEditor(canonicalSongText(songs[i]));
+      document.getElementById('songSelector').disabled=true;
+      document.getElementById('isolatedKey').value=songs[i].key||'';
+      setIsolationStatus(`ISOLATED: ${songs[i].title||`Song ${i+1}`}. Transpose and edit only this song, then click Save to Set.`);
     }
-    function applyIsolatedKey(target){ if(!target)return; const raw=document.getElementById('songContent').value; const m=raw.match(/^Key\s+of\s+([A-G](?:#|b)?)\s*$/im); if(!m){setIsolationStatus('No Key line found in isolated song.',true);return;} const from=noteToSemitone[normalizeKeyName(m[1])],to=noteToSemitone[target]; if(from===undefined||to===undefined)return; let d=to-from; if(d>6)d-=12;if(d<-6)d+=12; transpose(d); document.getElementById('isolatedKey').value=target; }
-    function applyIsolatedSong(){ if(!isolatedSongState){setIsolationStatus('Isolate a song first.',true);return;} const iso=parseSongDocument(document.getElementById('songContent').value)[0]||{title:'',key:'',bpm:'',body:[]}; isolatedSongState.songs[isolatedSongState.index]=iso; setEditor(isolatedSongState.songs.map(canonicalSongText).filter(Boolean).join('\n\n\n')); isolatedSongState=null; document.getElementById('isolatedKey').value=''; setIsolationStatus('Song changes applied back to the full set.'); }
-    function cancelIsolation(){ if(!isolatedSongState){setIsolationStatus('No isolated song to cancel.',true);return;} setEditor(isolatedSongState.original); isolatedSongState=null; document.getElementById('isolatedKey').value=''; setIsolationStatus('Isolation cancelled.'); }
+
+    function applyIsolatedKey(target){
+      if(!target)return;
+      const raw=document.getElementById('songContent').value;
+      const m=raw.match(/^Key\s+of\s+([A-G](?:#|b)?)\s*$/im);
+      if(!m){setIsolationStatus('No Key line found in isolated song.',true);return;}
+      const from=noteToSemitone[normalizeKeyName(m[1])],to=noteToSemitone[target];
+      if(from===undefined||to===undefined)return;
+      let d=to-from; if(d>6)d-=12;if(d<-6)d+=12;
+      transpose(d);
+      document.getElementById('isolatedKey').value=target;
+    }
+
+    function applyIsolatedSong(){
+      if(!isolatedSongState){setIsolationStatus('Isolate a song first.',true);return;}
+      const edited=document.getElementById('songContent').value.replace(/\r\n?/g,'\n');
+      const originalLines=isolatedSongState.original.replace(/\r\n?/g,'\n').split('\n');
+      const editedLines=edited.split('\n');
+      const merged=[...originalLines.slice(0,isolatedSongState.startLine),...editedLines,...originalLines.slice(isolatedSongState.endLine)];
+      const finalText=merged.join('\n').replace(/\n{4,}/g,'\n\n\n').trim();
+      isolatedSongState=null;
+      document.getElementById('isolatedKey').value='';
+      setEditor(finalText);
+      document.getElementById('songSelector').disabled=false;
+      setIsolationStatus('Song changes saved to the full set.');
+    }
+
+    function cancelIsolation(){
+      if(!isolatedSongState){setIsolationStatus('No isolated song to cancel.',true);return;}
+      const original=isolatedSongState.original;
+      isolatedSongState=null;
+      document.getElementById('isolatedKey').value='';
+      setEditor(original);
+      document.getElementById('songSelector').disabled=false;
+      setIsolationStatus('Isolation cancelled.');
+    }
+
     function setIsolationStatus(m,e=false){ const x=document.getElementById('isolationStatus'); if(x){x.textContent=m||'';x.style.color=e?'#fca5a5':'var(--text-muted)';} }
 
-    function handleEditorInput(){ if(isolatedSongState) setIsolationStatus('Isolated song has unsaved edits. Click Apply Back.'); updatePreview(); refreshSongSelector(); }
+    function handleEditorInput(){ if(isolatedSongState) setIsolationStatus('Isolated song has unsaved edits. Click Save to Set.'); updatePreview(); refreshSongSelector(); }
 
     document.addEventListener('keydown',e=>{ const t=e.target; const typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable); if(!typing&&e.altKey&&e.shiftKey&&e.key.toLowerCase()==='h'){e.preventDefault();insertQuickHeader();} });
 
