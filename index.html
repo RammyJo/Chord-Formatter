@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Worship Chords & Lyrics Formatter (Google Docs Ready)</title>
+  <title>Champions Community Worship Chord Formatter</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -11,8 +11,10 @@
       --border: #334155;
       --text: #f8fafc;
       --text-muted: #94a3b8;
-      --primary: #38bdf8;
-      --primary-hover: #0ea5e9;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --champions-blue: #1e3a8a;
+      --champions-red: #dc2626;
       --accent-cyan: #00ffff;
       --accent-yellow: #ffff00;
       --accent-green: #00ff00;
@@ -42,25 +44,42 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 3px solid var(--champions-red);
       padding-bottom: 16px;
     }
 
     header h1 {
       font-size: 24px;
-      color: #38bdf8;
+      color: #ffffff;
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
     .badge {
-      background: #0284c7;
+      background: var(--champions-red);
       color: white;
       font-size: 12px;
       padding: 3px 8px;
       border-radius: 9999px;
       font-weight: normal;
+    }
+
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #ffffff;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+    }
+
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--champions-red);
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18);
     }
 
     .layout {
@@ -177,7 +196,7 @@
     }
 
     button.primary {
-      background: #0284c7;
+      background: var(--primary);
     }
 
     button.primary:hover {
@@ -185,7 +204,7 @@
     }
 
     button.success {
-      background: #16a34a;
+      background: #15803d;
       font-weight: 600;
     }
 
@@ -284,6 +303,74 @@
       margin-bottom: 0;
     }
 
+    .tool-panel {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .tool-panel-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .quick-header-row, .isolation-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .quick-header-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .tool-help {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .status-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      min-height: 16px;
+    }
+
+    .isolation-row {
+      grid-template-columns: 2fr auto auto auto;
+    }
+
+    .isolation-row select {
+      min-width: 180px;
+    }
+
+    @media (max-width: 900px) {
+      .quick-header-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .quick-header-grid button {
+        width: 100%;
+      }
+      .isolation-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .quick-header-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .instructions {
       background: #0f172a;
       border-left: 4px solid var(--primary);
@@ -322,14 +409,15 @@
   <div class="container">
     <header>
       <div>
-        <h1>Worship Song Chord & Lyric Formatter <span class="badge">Google Docs Sync</span></h1>
+        <div class="brand-mark"><span class="brand-dot"></span>Champions Community</div>
+        <h1>Worship Chord Formatter <span class="badge">Google Docs Ready</span></h1>
         <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
-          Faithfully reproduces the "for edit" highlighting: Cyan header, Yellow chords/sections, Green band directives.
+          Built for Champions Community worship charts: preserve chord placement, normalize the chart, and prepare it for Google Docs.
         </p>
       </div>
       <div class="auto-meta-badge">
         <strong>Automatic Metadata Detection</strong><br>
-        <span>Paste one or multiple songs. Title, Key and BPM are detected from each song automatically.</span>
+        <span>Paste one or multiple songs. Title, Key and BPM are detected automatically.</span>
       </div>
     </header>
 
@@ -337,30 +425,67 @@
       <!-- Input Column -->
       <div class="card">
         <div class="card-title">
-          <span>Song Metadata & Chords</span>
+          <span>Paste Songs & Chords</span>
           <div class="controls-row">
-            <button onclick="autoFormatSong()" class="primary" title="Automatically clean and reorganize pasted song formatting">Auto-Format Song</button>
-            <button onclick="cleanChordSpacing()" title="Collapse spaces between chords to 1 space">1 Space Per Chord</button>
-            <button onclick="transpose(-1)" title="Transpose Down 1 Semitone">-1 Semitone</button>
-            <button onclick="transpose(1)" title="Transpose Up 1 Semitone">+1 Semitone</button>
+            <button type="button" onclick="autoFormatSong()" class="primary" title="Repair pasted chart formatting while preserving chord order">Auto-Format Song</button>
+            <button type="button" onclick="cleanChordSpacing()" title="Collapse spaces between chords to 1 space">1 Space Per Chord</button>
+            <button type="button" onclick="transpose(-1)" title="Transpose Down 1 Semitone">-1 Semitone</button>
+            <button type="button" onclick="transpose(1)" title="Transpose Up 1 Semitone">+1 Semitone</button>
             <label class="inline-setting" for="minLyricChars">Min lyric chars</label>
-            <input class="small-number" type="number" id="minLyricChars" min="1" max="80" value="15" oninput="autoFormatSong(false)" title="Shorter lyric phrases are automatically combined with nearby phrases">
+            <input class="small-number" type="number" id="minLyricChars" min="1" max="80" value="15" oninput="updatePreview()" title="Changes how lyric-only lines are grouped in the preview without rewriting your editor text">
           </div>
         </div>
 
         <div class="instructions metadata-instructions">
-          <strong>No manual title/key/BPM entry needed.</strong>
-          The formatter recognizes every song header in the pasted text. It supports repeated metadata such as <code>Bpm: 75</code> and <code>Key of C</code>, so three or more songs can be pasted into the same box and each one keeps its own title, key and BPM.
+          <strong>Paste messy charts directly.</strong> The formatter detects repeated Title / Key / BPM blocks, separates multiple songs, and preserves chord-to-lyric order while normalizing chord spacing.
+        </div>
+
+        <div class="tool-panel">
+          <div class="tool-panel-title">Quick song header</div>
+          <div class="quick-header-grid">
+            <div>
+              <label for="quickTitle">Title</label>
+              <input id="quickTitle" type="text" placeholder="Firm Foundation (He Won't)">
+            </div>
+            <div>
+              <label for="quickKey">Key</label>
+              <input id="quickKey" type="text" placeholder="C">
+            </div>
+            <div>
+              <label for="quickBpm">BPM</label>
+              <input id="quickBpm" type="text" placeholder="75">
+            </div>
+            <button type="button" class="primary" onclick="insertQuickHeader()">Insert</button>
+          </div>
+          <div class="tool-help">Shortcut format: <code>Title | C | 75</code> or fill the three boxes and press <strong>Alt + Shift + H</strong>.</div>
+        </div>
+
+        <div class="tool-panel">
+          <div class="tool-panel-title">Song isolation</div>
+          <div class="isolation-row">
+            <select id="songSelector" aria-label="Detected songs">
+              <option value="">No songs detected yet</option>
+            </select>
+            <button type="button" onclick="isolateSelectedSong()">Isolate</button>
+            <select id="isolatedKey" onchange="applyIsolatedKey(this.value)" aria-label="Change isolated song key">
+              <option value="">Set key</option>
+              <option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+            </select>
+            <button type="button" onclick="applyIsolatedSong()">Apply Back</button>
+            <button type="button" onclick="cancelIsolation()">Cancel</button>
+          </div>
+          <div class="tool-help"><strong>Use:</strong> 1) Select a song. 2) Click <strong>Isolate</strong>. 3) Transpose or edit it normally. 4) Click <strong>Apply Back</strong>. While isolated, the editor contains only that song, so transpose changes affect <strong>only that song</strong>.</div>
+          <div id="isolationStatus" class="status-text"></div>
         </div>
 
         <div>
-          <label for="songContent">Chords & Lyrics Text</label>
-          <textarea id="songContent" oninput="updatePreview()"></textarea>
+          <label for="songContent">Editing section <span style="color:var(--text-muted); font-size:11px; font-weight:400;">(paste your source here)</span></label>
+          <textarea id="songContent" oninput="handleEditorInput()"></textarea>
         </div>
 
         <div class="instructions">
           <strong>Paste messy charts directly:</strong>
-          The formatter reorganizes chord/lyric lines automatically. Short lyric fragments are combined until they reach the <strong>minimum lyric characters</strong> setting, while their chords move with the combined phrase. Hyphen-split words, slash chords, chord holds, and chord changes such as <code>D-A</code> are supported.
+          The formatter preserves the pasted chord order exactly. Each chord row stays with the lyric row immediately after it, so chord changes never jump or stack. It normalizes chord spacing to one space, fixes obvious split words inside lyrics, and supports slash chords, chord holds, and changes such as <code>D-A</code>.
         </div>
       </div>
 
@@ -368,8 +493,8 @@
       <div class="card">
         <div class="card-title">
           <span>Google Docs Live Preview</span>
-          <button class="success" onclick="copyForGoogleDocs()">
-            📋 Copy for Google Docs
+          <button type="button" class="success" onclick="copyForGoogleDocs()">
+            Copy for Google Docs
           </button>
         </div>
 
@@ -429,28 +554,93 @@
 
     function isBandCue(line) {
       const trimmed = line.trim();
-      return /^\((Pasok|Keyboard|Pads|Acoustic|Build up|Full Band|Soft|slowly Build up).*\)$/i.test(trimmed) ||
+      return /^\((Pasok|Keyboard|Pads|Acoustic|Build up|Full Band|Soft|Slowly Build up|Bass|Drums|E-Guitar|Guitar|Keys|Strings).*\)$/i.test(trimmed) ||
              /^\(soft lang muna\)$/i.test(trimmed) ||
              /^\(Build up\)$/i.test(trimmed) ||
              /^\(Full Band\)$/i.test(trimmed) ||
              /^\(Soft\)$/i.test(trimmed);
     }
 
-    function isSectionHeader(line) {
-      const trimmed = line.trim();
-      return /^\[?(Verse|Chorus|Pre-?Chorus|Post-?Chorus|Refrain|Bridge|Pre-?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)[\s0-9:()x-]*\]?$/i.test(trimmed);
+    // Section names recognized by the formatter and repeat resolver.
+    const sectionNames = '(?:Alt\s+)?(?:Verse|Chorus|Pre-?Chorus|Half-?Chorus|Post-?Chorus|Refrain|Bridge|Pre-?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)';
+
+    function isRepeatDirective(line) {
+      return /\bREPEAT\s+/i.test(normalizePastedLine(line));
+    }
+
+    function extractRepeatDirectives(line) {
+      const text = normalizePastedLine(line);
+      if (!text) return { body: '', directives: [] };
+
+      // Supports:
+      //   REPEAT CHORUS
+      //   REPEAT VERSE 1
+      //   REPEAT BRIDGE 2x
+      //   REPEAT VERSE 1 REPEAT CHORUS
+      const re = /\bREPEAT\s+((?:ALT\s+)?(?:VERSE|CHORUS|PRE-?CHORUS|POST-?CHORUS|REFRAIN|BRIDGE|PRE-?BRIDGE|INTRO|OUTRO|TAG|INSTRUMENTAL|INTERLUDE|TURNAROUND|ADLIB|ENDING|VAMP|BREAKDOWN|HOOK|REPRISE|CODA|MEDLEY)(?:\s+\d+(?!x)\b)?)(?:\s+(\d+)x)?(?=\s+REPEAT\s+|$)/gi;
+      const directives = [];
+      const spans = [];
+      let match;
+
+      while ((match = re.exec(text))) {
+        directives.push({
+          target: normalizePastedLine(match[1]),
+          count: match[2] ? Math.max(1, Number(match[2])) : 1,
+          text: normalizePastedLine(match[0])
+        });
+        spans.push([match.index, re.lastIndex]);
+      }
+
+      if (!directives.length) return { body: text, directives: [] };
+
+      let body = text;
+      for (let i = spans.length - 1; i >= 0; i--) {
+        const [startPos, endPos] = spans[i];
+        body = (body.slice(0, startPos) + ' ' + body.slice(endPos))
+          .replace(/\s{2,}/g, ' ')
+          .trim();
+      }
+
+      return { body, directives };
+    }
+
+    function normalizeRepeatDirective(line) {
+      return normalizePastedLine(line).replace(/\s+/g, ' ');
     }
 
     function normalizeSectionHeader(line) {
-      const trimmed = line.trim();
-      if (!isSectionHeader(trimmed)) return null;
-
-      let header = trimmed.replace(/^\[/, '').replace(/\]$/, '').trim();
-      header = header.replace(/\s*:\s*$/, '').trim();
-      header = header.replace(/\s+/g, ' ');
-
-      // Keep the section label consistent in the final chart.
+      const trimmed = normalizePastedLine(line);
+      if (!trimmed) return null;
+      const match = trimmed.match(/^\[?((?:Alt\s+)?(?:Verse|Chorus|Pre-?Chorus|Half-?Chorus|Post-?Chorus|Refrain|Bridge|Pre-?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)[\s0-9:()x-]*)\]?$/i);
+      if (!match) return null;
+      const header = match[1].replace(/\s*:\s*$/, '').replace(/\s+/g, ' ').trim();
       return `[${header}]`;
+    }
+
+    function isSectionHeader(line) {
+      return !!normalizeSectionHeader(line);
+    }
+
+    function sectionKey(value) {
+      return normalizePastedLine(value)
+        .replace(/^\[/, '')
+        .replace(/\]$/, '')
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        .trim();
+    }
+
+    function sectionTargetKeys(target) {
+      const key = sectionKey(target);
+      const keys = new Set([key]);
+      const m = key.match(/^(alt\s+)?(verse|chorus|pre-?chorus|post-?chorus|refrain|bridge|pre-?bridge|intro|outro|tag|instrumental|interlude|turnaround|adlib|ending|vamp|breakdown|hook|reprise|coda|medley)(?:\s+(\d+))?$/i);
+      if (m) {
+        const alt = !!m[1];
+        const base = m[2].replace(/-+/g, ' ');
+        const number = m[3] ? ` ${m[3]}` : '';
+        keys.add(`${alt ? 'alt ' : ''}${base}${number}`.trim());
+      }
+      return keys;
     }
 
     function normalizeChordLine(line) {
@@ -504,9 +694,32 @@
     }
 
     function cleanLyricFragment(text) {
-      return String(text || '')
+      let value = String(text || '')
         .replace(/\u00A0/g, ' ')
         .replace(/[\t ]+/g, ' ')
+        .trim();
+
+      // Worship Together and similar sources sometimes split a word with a
+      // hyphen plus whitespace: "shak- en", "go- ing", "un- der".
+      value = value.replace(/([A-Za-zÀ-ÖØ-öø-ÿ]{2,})-\s+([A-Za-zÀ-ÖØ-öø-ÿ]{1,})\b/g, '$1$2');
+
+      // A small, conservative set of common split-word artifacts where the
+      // source separates a one-letter prefix from the rest of the word.
+      const joinedWords = {
+        'a round': 'around',
+        'a gain': 'again',
+        'a bout': 'about',
+        'a cross': 'across',
+        'a way': 'away',
+        'a lone': 'alone',
+        'a live': 'alive',
+        'a loud': 'aloud'
+      };
+      value = value.replace(/\ba\s+(round|gain|bout|cross|way|lone|live|loud)\b/gi, m => joinedWords[m.toLowerCase()] || m);
+
+      return value
+        .replace(/\s+([,.!?;:])/g, '$1')
+        .replace(/\s{2,}/g, ' ')
         .trim();
     }
 
@@ -524,35 +737,49 @@
       return merged;
     }
 
-    function splitInlineChordLineForFormatter(line) {
-      const trimmed = line.trim();
-      if (!trimmed) return null;
+    // -------------------------------------------------------------------------
+    // Chart parsing / repair engine
+    // -------------------------------------------------------------------------
+    // The formatter's most important rule is simple:
+    // 1) Never invent chord placement.
+    // 2) A standalone chord row normally controls the lyric row immediately
+    //    after it.
+    // 3) If a chord row is visibly inserted inside a lyric phrase, join the
+    //    two lyric fragments around that chord row and keep the chord row on
+    //    that combined phrase.
+    // 4) Only join ordinary lyric-only wraps when they are below Min lyric chars.
 
-      const bracketMatches = [...trimmed.matchAll(/\[([^\]]+)\]/g)];
-      if (bracketMatches.length) {
-        const valid = bracketMatches.map(m => m[1].trim()).filter(isChordToken);
-        if (valid.length === bracketMatches.length) {
-          const lyric = trimmed.replace(/\[([^\]]+)\]/g, '').replace(/\s{2,}/g, ' ').trim();
-          return { chordLine: normalizeChordLine(valid.join(' ')), lyric };
-        }
-      }
-
-      const tokens = trimmed.split(/\s+/);
-      let count = 0;
-      while (count < tokens.length && isChordToken(tokens[count])) count++;
-      if (count > 0 && count < tokens.length) {
-        return {
-          chordLine: normalizeChordLine(tokens.slice(0, count).join(' ')),
-          lyric: tokens.slice(count).join(' ')
-        };
-      }
-      return null;
-    }
+    const sectionPattern = '(?:Alt\\s+)?(?:Verse|Chorus|Pre[-\\s]?Chorus|Half[-\\s]?Chorus|Post[-\\s]?Chorus|Refrain|Bridge|Pre[-\\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)';
 
     function normalizePastedLine(line) {
-      return String(line || '')
-        .replace(/\u00A0/g, ' ')
+      let value = String(line ?? '')
+        .replace(/^\uFEFF/, '')
+        .replace(/\u00A0|\u2007|\u202F/g, ' ')
         .replace(/[\t ]+/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .trim();
+
+      // Text copied from a rendered song page can carry Markdown-style
+      // emphasis. Remove only wrappers around the entire line.
+      value = value
+        .replace(/^\*\*(.*?)\*\*$/, '$1')
+        .replace(/^__(.*?)__$/, '$1')
+        .replace(/^\*(.*?)\*$/, '$1')
+        .replace(/^__(.*?)__$/, '$1')
+        .trim();
+
+      // Remove common list/bullet artifacts, but leave musical hyphens alone.
+      value = value.replace(/^(?:[•·▪◦]|\u2022)\s+/, '');
+
+      return value;
+    }
+
+    function normalizeChordLine(line) {
+      return String(line || '')
+        .replace(/\u00A0|\u2007|\u202F/g, ' ')
+        .replace(/[\t ]+/g, ' ')
+        .replace(/\s*-\s*/g, '-')
+        .replace(/\|\s*\|/g, '||')
         .trim();
     }
 
@@ -562,39 +789,13 @@
       return aliases[normalized] || normalized;
     }
 
-    function normalizePastedLine(line) {
-      return String(line || '')
-        .replace(/\u00A0/g, ' ')
-        .replace(/[\t ]+/g, ' ')
-        .trim();
-    }
-
-    function getMinimumLyricChars() {
-      const value = Number(document.getElementById('minLyricChars')?.value);
-      return Number.isFinite(value) && value > 0 ? Math.round(value) : 15;
-    }
-
-    function lyricCharacterCount(text) {
-      return String(text || '').replace(/\s/g, '').length;
-    }
-
-    function cleanLyricFragment(text) {
-      return String(text || '')
-        .replace(/\u00A0/g, ' ')
-        .replace(/[\t ]+/g, ' ')
-        .trim()
-        .replace(/\s+([,.!?;:])/g, '$1');
-    }
-
     function parseMetadataLine(line) {
       const clean = normalizePastedLine(line);
-
       const bpmMatch = clean.match(/^BPM\s*:?\s*(\d+(?:\.\d+)?)$/i);
       if (bpmMatch) return { type: 'bpm', value: bpmMatch[1] };
 
       const keyMatch = clean.match(/^Key\s*(?:of\s*)?:?\s*([A-G](?:#|b)?)\s*$/i);
       if (keyMatch) return { type: 'key', value: normalizeKeyName(keyMatch[1]) };
-
       return null;
     }
 
@@ -602,355 +803,480 @@
       return !!parseMetadataLine(line);
     }
 
-    function isLikelySongTitle(line) {
-      const clean = normalizePastedLine(line);
-      if (!clean) return false;
-      if (isMetadataLine(clean) || isSectionHeader(clean) || isBandCue(clean) || isChordLine(clean)) return false;
-      if (/^(chords?|lyrics?|song\s*title|key|bpm)\s*:?$/i.test(clean)) return false;
-      return true;
-    }
-
-    function findMetadataClusters(lines) {
-      const nonEmpty = [];
-      lines.forEach((line, index) => {
-        const clean = normalizePastedLine(line);
-        if (clean) nonEmpty.push({ index, clean });
-      });
-
-      const metadata = nonEmpty.filter(item => isMetadataLine(item.clean));
-      if (!metadata.length) return [];
-
-      const clusters = [];
-      let current = [metadata[0]];
-
-      for (let i = 1; i < metadata.length; i++) {
-        const prevPos = nonEmpty.findIndex(x => x.index === current[current.length - 1].index);
-        const nextPos = nonEmpty.findIndex(x => x.index === metadata[i].index);
-        const logicalGap = nextPos - prevPos;
-        const between = nonEmpty.slice(prevPos + 1, nextPos);
-        const hasTitleBetween = between.some(item => isLikelySongTitle(item.clean));
-
-        if (logicalGap <= 2 && !hasTitleBetween) {
-          current.push(metadata[i]);
-        } else {
-          clusters.push(current);
-          current = [metadata[i]];
-        }
-      }
-      clusters.push(current);
-      return clusters;
-    }
-
-    function findPreviousNonEmptyIndex(lines, fromIndex) {
-      for (let i = fromIndex - 1; i >= 0; i--) {
-        if (normalizePastedLine(lines[i])) return i;
-      }
-      return -1;
-    }
-
-    function parseSongDocument(raw) {
-      const lines = String(raw || '').replace(/\r\n?/g, '\n').split('\n');
-      const clusters = findMetadataClusters(lines);
-
-      if (!clusters.length) {
-        return [{ title: '', key: '', bpm: '', body: lines.slice() }];
-      }
-
-      const songs = [];
-
-      for (let c = 0; c < clusters.length; c++) {
-        const cluster = clusters[c];
-        const firstMeta = cluster[0].index;
-        const lastMeta = cluster[cluster.length - 1].index;
-
-        let title = '';
-        const titleIndex = findPreviousNonEmptyIndex(lines, firstMeta);
-        if (titleIndex >= 0 && isLikelySongTitle(lines[titleIndex])) {
-          title = normalizePastedLine(lines[titleIndex]);
-        }
-
-        const nextCluster = clusters[c + 1];
-        const nextFirstMeta = nextCluster ? nextCluster[0].index : lines.length;
-        const nextTitleIndex = nextCluster ? findPreviousNonEmptyIndex(lines, nextFirstMeta) : -1;
-
-        const bodyStart = lastMeta + 1;
-        let bodyEnd = nextFirstMeta;
-        if (nextTitleIndex >= bodyStart && nextTitleIndex < nextFirstMeta && isLikelySongTitle(lines[nextTitleIndex])) {
-          bodyEnd = nextTitleIndex;
-        }
-
-        let body = lines.slice(bodyStart, bodyEnd);
-        let bpm = '';
-        let key = '';
-
-        for (const meta of cluster) {
-          const parsed = parseMetadataLine(meta.clean);
-          if (!parsed) continue;
-          if (parsed.type === 'bpm') bpm = parsed.value;
-          if (parsed.type === 'key') key = parsed.value;
-        }
-
-        songs.push({ title, key, bpm, body });
-      }
-
-      // Preserve genuine content before the first song title. Do not re-add the
-      // detected title itself, because it belongs in the metadata header.
-      const firstMeta = clusters[0][0].index;
-      const firstTitleIndex = findPreviousNonEmptyIndex(lines, firstMeta);
-      if (firstTitleIndex >= 0 && isLikelySongTitle(lines[firstTitleIndex])) {
-        const leading = lines.slice(0, firstTitleIndex);
-        if (leading.some(x => normalizePastedLine(x))) {
-          songs[0].body = leading.concat(songs[0].body);
-        }
-      } else {
-        const leading = lines.slice(0, firstMeta);
-        if (leading.some(x => normalizePastedLine(x))) {
-          songs[0].body = leading.concat(songs[0].body);
-        }
-      }
-
-      return songs;
-    }
-
     function normalizeSectionHeader(line) {
       const trimmed = normalizePastedLine(line);
-      if (!isSectionHeader(trimmed)) return null;
+      if (!trimmed) return null;
 
-      let header = trimmed.replace(/^\[/, '').replace(/\]$/, '').trim();
-      header = header.replace(/\s*:\s*$/, '').trim();
-      header = header.replace(/\s+/g, ' ');
+      const exact = trimmed.match(new RegExp('^\\[?(' + sectionPattern + '[\\s0-9:()x-]*)\\]?$','i'));
+      if (!exact) return null;
+
+      const header = exact[1]
+        .replace(/\s*:\s*$/, '')
+        .replace(/\s+/g, ' ')
+        .replace(/\s+-\s+/g, '-')
+        .trim();
+
       return `[${header}]`;
     }
 
-    function normalizeChordLine(line) {
-      return String(line || '')
-        .replace(/\u00A0/g, ' ')
-        .replace(/[\t ]+/g, ' ')
-        .replace(/\s*-\s*/g, '-')
-        .trim();
+    function isSectionHeader(line) {
+      return !!normalizeSectionHeader(line);
+    }
+
+    function isBandCue(line) {
+      const trimmed = normalizePastedLine(line);
+      return /^\((Pasok|Keyboard|Pads|Acoustic|Build up|Full Band|Soft|Slowly Build up|Bass|Drums|E-?Guitar|Guitar|Keys|Strings).*\)$/i.test(trimmed) ||
+             /^\(soft lang muna\)$/i.test(trimmed);
+    }
+
+    function sectionKey(value) {
+      return normalizePastedLine(value)
+        .replace(/^\[/, '')
+        .replace(/\]$/, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase()
+        .replace(/[-–—]/g, ' ')
+        .replace(/\s+/g, ' ');
+    }
+
+    function sectionTargetKeys(target) {
+      const wanted = sectionKey(target);
+      const keys = new Set([wanted]);
+      const m = wanted.match(/^(alt\s+)?(verse|chorus|pre\s*chorus|half\s*chorus|post\s*chorus|refrain|bridge|pre\s*bridge|intro|outro|tag|instrumental|interlude|turnaround|adlib|ending|vamp|breakdown|hook|reprise|coda|medley)(?:\s+(\d+))?$/i);
+      if (m) {
+        const alt = m[1] ? 'alt ' : '';
+        keys.add(`${alt}${m[2]}${m[3] ? ` ${m[3]}` : ''}`.trim());
+        keys.add(`${alt}${m[2].replace(/\s+/g, '-')} ${m[3] || ''}`.trim());
+      }
+      return keys;
+    }
+
+    function isRepeatDirective(line) {
+      return /\bREPEAT\s+/i.test(normalizePastedLine(line));
+    }
+
+    function extractRepeatDirectives(line) {
+      const text = normalizePastedLine(line);
+      if (!text) return { body: '', directives: [] };
+
+      const re = /\bREPEAT\s+((?:ALT\s+)?(?:VERSE|CHORUS|PRE[-\s]?CHORUS|HALF[-\s]?CHORUS|POST[-\s]?CHORUS|REFRAIN|BRIDGE|PRE[-\s]?BRIDGE|INTRO|OUTRO|TAG|INSTRUMENTAL|INTERLUDE|TURNAROUND|ADLIB|ENDING|VAMP|BREAKDOWN|HOOK|REPRISE|CODA|MEDLEY)(?:\s+\d+)?)(?:\s+(\d+)x)?(?=\s+REPEAT\s+|$)/gi;
+      const directives = [];
+      const spans = [];
+      let match;
+
+      while ((match = re.exec(text))) {
+        directives.push({
+          target: normalizePastedLine(match[1]),
+          count: match[2] ? Math.max(1, Number(match[2])) : 1,
+          text: normalizePastedLine(match[0])
+        });
+        spans.push([match.index, re.lastIndex]);
+      }
+
+      if (!directives.length) return { body: text, directives: [] };
+
+      let body = text;
+      for (let i = spans.length - 1; i >= 0; i--) {
+        const [start, end] = spans[i];
+        body = `${body.slice(0, start)} ${body.slice(end)}`.replace(/\s+/g, ' ').trim();
+      }
+      return { body, directives };
+    }
+
+    function isChordBody(value) {
+      const clean = String(value || '').trim();
+      return /^[A-G](?:b|#)?(?:maj|min|m|M|\+|dim|aug|sus[24]?|add[0-9]+|[0-9]+)*$/.test(clean);
+    }
+
+    function stripChordMarkers(token) {
+      let clean = String(token || '').trim();
+      if (!clean) return '';
+      clean = clean.replace(/^\|+/, '').replace(/\|+$/, '');
+      clean = clean.replace(/(?:ll|l|\([0-9]+x\))+$/i, '');
+      return clean;
+    }
+
+    function isChordToken(token) {
+      let clean = normalizePastedLine(token);
+      if (!clean) return false;
+
+      // Standalone bar/hold markers are valid parts of a chord row.
+      if (/^[|/\-]+$/.test(clean)) return true;
+
+      clean = stripChordMarkers(clean);
+      if (!clean) return true;
+
+      // A - between chord names means a half-count or transition, e.g. D-A.
+      const hyphenParts = clean.split('-');
+      if (hyphenParts.length > 1 && hyphenParts.every(Boolean)) {
+        return hyphenParts.every(part => {
+          const slash = part.split('/');
+          return slash.length <= 2 && slash.every(isChordBody);
+        });
+      }
+
+      const slashParts = clean.split('/');
+      if (slashParts.length > 2) return false;
+      return slashParts.every(isChordBody);
+    }
+
+    function isChordLine(line) {
+      const trimmed = normalizePastedLine(line);
+      if (!trimmed || isBandCue(trimmed) || isSectionHeader(trimmed) || isRepeatDirective(trimmed)) return false;
+
+      const tokens = trimmed.split(/\s+/).filter(Boolean);
+      if (!tokens.length) return false;
+
+      // Single chord rows such as "Bb" or "A" are unambiguous in a chart.
+      if (tokens.length === 1) return isChordToken(tokens[0]);
+
+      // Normal chord rows are almost entirely chord tokens/markers. Do not let
+      // ordinary lyric words be swallowed just because they contain "A"/"D".
+      const valid = tokens.filter(isChordToken).length;
+      return valid === tokens.length;
     }
 
     function splitInlineChordLineForFormatter(line) {
       const trimmed = normalizePastedLine(line);
-      if (!trimmed) return null;
+      if (!trimmed || isBandCue(trimmed) || isSectionHeader(trimmed) || isChordLine(trimmed)) return null;
 
+      // [Bb]Christ is my... or [D/F#]You...
       const bracketMatches = [...trimmed.matchAll(/\[([^\]]+)\]/g)];
       if (bracketMatches.length) {
-        const valid = bracketMatches.map(m => m[1].trim()).filter(isChordToken);
-        if (valid.length === bracketMatches.length) {
-          const lyric = trimmed.replace(/\[[^\]]+\]/g, '').replace(/\s{2,}/g, ' ').trim();
-          return { chordLine: normalizeChordLine(valid.join(' ')), lyric };
+        const chords = bracketMatches.map(m => normalizePastedLine(m[1])).filter(Boolean);
+        if (chords.length && chords.every(isChordToken)) {
+          const lyric = cleanLyricFragment(trimmed.replace(/\[[^\]]+\]/g, ''));
+          return { chordLine: normalizeChordLine(chords.join(' ')), lyric };
         }
       }
 
+      // Conservative prefix recognition. Prefer complex/multi-chord prefixes so
+      // a normal lyric such as "A brand new day" is not mistaken for a chord row.
       const tokens = trimmed.split(/\s+/);
       let count = 0;
       while (count < tokens.length && isChordToken(tokens[count])) count++;
-      if (count > 0 && count < tokens.length) {
+      if (count >= 2 && count < tokens.length) {
         return {
           chordLine: normalizeChordLine(tokens.slice(0, count).join(' ')),
-          lyric: tokens.slice(count).join(' ')
+          lyric: cleanLyricFragment(tokens.slice(count).join(' '))
         };
+      }
+
+      const first = tokens[0] || '';
+      if (count === 1 && count < tokens.length && /^(?:[A-G](?:b|#)?(?:m|min|maj|sus|dim|aug|add)?[0-9]*(?:\/[A-G](?:b|#)?(?:m|min|maj|sus|dim|aug|add)?[0-9]*)?)$/i.test(first)) {
+        // Only accept a bare single leading chord when it has a clear extension,
+        // slash bass, or the lyric starts lowercase. This protects "A brand...".
+        if (/[#b/0-9]/.test(first) || /^[a-zà-öø-ÿ]/.test(tokens[1] || '')) {
+          return { chordLine: normalizeChordLine(first), lyric: cleanLyricFragment(tokens.slice(1).join(' ')) };
+        }
       }
       return null;
     }
 
-    function mergeHyphenatedLyricLines(lines) {
-      const merged = [];
-      for (const rawLine of lines) {
-        const line = cleanLyricFragment(rawLine);
-        if (!line) continue;
-        if (merged.length && /-$/.test(merged[merged.length - 1]) && /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(line)) {
-          merged[merged.length - 1] = merged[merged.length - 1].slice(0, -1) + line;
-        } else if (merged.length && /\b(go|un|beau|wa|lo|fa|ri|re|ev|nev|to|an)-$/i.test(merged[merged.length - 1]) && /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(line)) {
-          merged[merged.length - 1] = merged[merged.length - 1].slice(0, -1) + line;
-        } else {
-          merged.push(line);
-        }
-      }
-      return merged;
+    function lyricCharacterCount(text) {
+      return String(text || '').replace(/\s/g, '').length;
     }
 
-    function collectFormatterAtoms(raw) {
+    function cleanLyricFragment(text) {
+      let value = String(text || '')
+        .replace(/\u00A0|\u2007|\u202F/g, ' ')
+        .replace(/[\t ]+/g, ' ')
+        .trim();
+
+      // Fix obvious hyphenated copy wraps: shak- + en => shaken.
+      value = value.replace(/([A-Za-zÀ-ÖØ-öø-ÿ]{2,})-\s+([A-Za-zÀ-ÖØ-öø-ÿ]{1,})\b/g, '$1$2');
+
+      // Common one-letter copy artifacts seen in worship charts.
+      const joinedWords = {
+        'a round': 'around', 'a gain': 'again', 'a bout': 'about', 'a cross': 'across',
+        'a way': 'away', 'a lone': 'alone', 'a live': 'alive', 'a loud': 'aloud'
+      };
+      value = value.replace(/\ba\s+(round|gain|bout|cross|way|lone|live|loud)\b/gi,
+        match => joinedWords[match.toLowerCase()] || match);
+
+      return value
+        .replace(/\s+([,.!?;:])/g, '$1')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+    }
+
+    function joinLyrics(first, second) {
+      return cleanLyricFragment(`${first} ${second}`);
+    }
+
+    function isSentenceEndingLyric(text) {
+      const clean = cleanLyricFragment(text);
+      return !!clean && /[.!?;:][”’'\")\]]*$/.test(clean);
+    }
+
+    function shouldMergeInterruptedLyrics(left, right, minChars) {
+      left = cleanLyricFragment(left);
+      right = cleanLyricFragment(right);
+      if (!left || !right || isSentenceEndingLyric(left)) return false;
+
+      const rightContinues = /^[a-zà-öø-ÿ'’]/.test(right);
+      const explicitSplit = /[-–—]$/.test(left) || /^[-–—]/.test(right);
+      const dangling = /(?:^|\s)(?:a|an|the|my|our|your|his|her|their|to|of|on|in|at|for|with|through|from|into|onto|by|that|this|these|those|no|and|but|or|because|’cause|'cause|own|more|never)$/i.test(left);
+
+      // Lowercase continuation alone is NOT enough. A normal chart often has
+      // a complete lyric followed by a new chord row, even if the next lyric
+      // starts with a lowercase word or apostrophe. Only merge when the lyric
+      // is visibly interrupted (split word) or ends on a dangling connector.
+      return explicitSplit || (dangling && rightContinues);
+    }
+
+    function makeBoundaryAtom(kind, text = '') {
+      return { marker: kind, text };
+    }
+
+    function parseFormatterAtoms(raw) {
       const sourceLines = String(raw || '').replace(/\r\n?/g, '\n').split('\n');
       const atoms = [];
-      let activeChordLine = '';
-      let activeLyrics = [];
-      let activeSection = null;
-
-      const flushChunk = () => {
-        if (!activeChordLine && !activeLyrics.length) return;
-        const lyricLines = mergeHyphenatedLyricLines(activeLyrics);
-
-        if (activeChordLine) {
-          if (lyricLines.length) {
-            atoms.push({ chords: activeChordLine, lyric: lyricLines[0], section: activeSection });
-            for (let i = 1; i < lyricLines.length; i++) {
-              atoms.push({ chords: '', lyric: lyricLines[i], section: activeSection });
-            }
-          } else {
-            atoms.push({ chords: activeChordLine, lyric: '', section: activeSection });
-          }
-        } else {
-          for (const lyric of lyricLines) atoms.push({ chords: '', lyric, section: activeSection });
-        }
-
-        activeChordLine = '';
-        activeLyrics = [];
-      };
 
       for (const rawLine of sourceLines) {
         const line = normalizePastedLine(rawLine);
-        if (!line) continue;
 
-        const section = normalizeSectionHeader(line);
+        if (!line) {
+          if (atoms.length && atoms[atoms.length - 1].marker !== 'blank') atoms.push(makeBoundaryAtom('blank'));
+          continue;
+        }
+
+        const repeat = extractRepeatDirectives(line);
+        let working = repeat.body;
+
+        if (!working) {
+          repeat.directives.forEach(d => atoms.push({ type: 'repeat-request', target: d.target, count: d.count, text: d.text }));
+          continue;
+        }
+
+        const section = normalizeSectionHeader(working);
         if (section) {
-          flushChunk();
-          atoms.push({ marker: 'section', text: section });
-          activeSection = section;
-          continue;
-        }
-
-        const combinedSection = line.match(/^((?:\[)?(?:Verse|Chorus|Bridge|Intro|Outro|Tag|Instrumental|Adlib|Ending|MEDLEY)[\s\d:]*)(?:\])?\s*:\s*(.+)$/i);
-        if (combinedSection && isChordLine(combinedSection[2])) {
-          flushChunk();
-          const header = '[' + combinedSection[1].replace(/^\[/, '').replace(/\]$/, '').trim() + ']';
-          atoms.push({ marker: 'section', text: header });
-          activeSection = header;
-          activeChordLine = normalizeChordLine(combinedSection[2]);
-          continue;
-        }
-
-        if (isBandCue(line)) {
-          flushChunk();
-          atoms.push({ marker: 'cue', text: line });
-          continue;
-        }
-
-        const inline = splitInlineChordLineForFormatter(line);
-        if (inline && inline.lyric) {
-          flushChunk();
-          atoms.push({ chords: inline.chordLine, lyric: cleanLyricFragment(inline.lyric), section: activeSection });
-          continue;
-        }
-
-        if (isChordLine(line)) {
-          if (activeChordLine && activeLyrics.length === 0) {
-            activeChordLine = (activeChordLine + ' ' + normalizeChordLine(line)).trim();
-          } else {
-            flushChunk();
-            activeChordLine = normalizeChordLine(line);
+          atoms.push(makeBoundaryAtom('section', section));
+        } else if (isBandCue(working)) {
+          atoms.push(makeBoundaryAtom('cue', working));
+        } else {
+          // "Verse 1: lyric..." / "Intro: C G Am"
+          const combined = working.match(new RegExp('^\\[?(' + sectionPattern + '[\\s\\d()x-]*)\\]?\\s*:\\s*(.+)$', 'i'));
+          if (combined) {
+            atoms.push(makeBoundaryAtom('section', `[${combined[1].replace(/\s+/g, ' ').trim()}]`));
+            working = combined[2].trim();
           }
-          continue;
+
+          const inline = splitInlineChordLineForFormatter(working);
+          if (inline && inline.lyric) {
+            atoms.push({ type: 'pair', chords: inline.chordLine, lyric: inline.lyric });
+          } else if (isChordLine(working)) {
+            atoms.push({ type: 'chord', chords: normalizeChordLine(working) });
+          } else if (working) {
+            atoms.push({ type: 'lyric', lyric: cleanLyricFragment(working) });
+          }
         }
 
-        activeLyrics.push(cleanLyricFragment(line));
+        repeat.directives.forEach(d => atoms.push({ type: 'repeat-request', target: d.target, count: d.count, text: d.text }));
       }
 
-      flushChunk();
-      return atoms.filter(a => a.marker || a.lyric || a.chords);
+      return atoms;
     }
 
-    function mergeHyphenatedAtoms(atoms) {
-      const out = atoms.map(atom => ({ ...atom }));
-      for (let i = 0; i < out.length - 1; i++) {
-        const current = out[i];
-        const next = out[i + 1];
-        if (current.marker || next.marker || !current.lyric || !next.lyric) continue;
-        if (/-$/.test(current.lyric) && /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(next.lyric)) {
-          current.lyric = current.lyric.slice(0, -1) + next.lyric;
-          if (next.chords) current.chords = [current.chords, next.chords].filter(Boolean).join(' ');
-          out.splice(i + 1, 1);
-          i--;
+    function cloneAtom(atom) {
+      return atom ? { ...atom } : atom;
+    }
+
+    function expandRepeatRequests(atoms) {
+      const sectionMap = new Map();
+      let currentHeader = null;
+      let currentBody = [];
+
+      const flush = () => {
+        if (!currentHeader) return;
+        const key = sectionKey(currentHeader);
+        if (!sectionMap.has(key)) {
+          sectionMap.set(key, { header: currentHeader, body: currentBody.map(cloneAtom) });
+        }
+      };
+
+      for (const atom of atoms) {
+        if (atom.marker === 'section') {
+          flush();
+          currentHeader = atom.text;
+          currentBody = [];
+          continue;
+        }
+        if (atom.marker === 'cue' && !currentHeader) continue;
+        if (atom.type !== 'repeat-request' && currentHeader) currentBody.push(atom);
+      }
+      flush();
+
+      function findSection(target) {
+        const candidates = sectionTargetKeys(target);
+        for (const key of candidates) {
+          if (sectionMap.has(key)) return sectionMap.get(key);
+        }
+        const wanted = sectionKey(target);
+        for (const [key, section] of sectionMap.entries()) {
+          if (key === wanted || key.startsWith(`${wanted} `) || wanted.startsWith(`${key} `)) return section;
+        }
+        return null;
+      }
+
+      const out = [];
+      for (const atom of atoms) {
+        if (atom.type !== 'repeat-request') {
+          out.push(cloneAtom(atom));
+          continue;
+        }
+
+        const section = findSection(atom.target);
+        if (!section) {
+          // Keep unknown instructions visible rather than silently deleting them.
+          out.push(makeBoundaryAtom('cue', atom.text));
+          continue;
+        }
+
+        // "REPEAT CHORUS" means play it again once. "REPEAT BRIDGE 2x"
+        // means two total plays of that section, matching common chart usage.
+        const totalPlays = Math.max(2, Number(atom.count || 1));
+        const copies = Math.max(1, totalPlays - 1);
+        for (let n = 0; n < copies; n++) {
+          out.push(makeBoundaryAtom('section', section.header));
+          section.body.forEach(a => out.push(cloneAtom(a)));
         }
       }
       return out;
     }
 
-    function mergeFormatterAtoms(atoms, minChars) {
-      const out = atoms.map(atom => ({ ...atom, chords: atom.chords || '', lyric: atom.lyric || '' }));
-      const isPhrase = atom => !atom.marker && (atom.lyric || atom.chords);
-      const len = atom => lyricCharacterCount(atom.lyric);
+    function mergeInterruptedLyricAroundChord(atoms) {
+      // DELIBERATELY CONSERVATIVE:
+      // Never merge lyrics across a chord row. Once a chord row exists, its
+      // position is a musical boundary. Moving that chord onto a combined lyric
+      // can make musicians follow the wrong change and can also stack multiple
+      // chord rows together. The formatter therefore preserves the source order
+      // and only repairs lyric text inside the same lyric atom.
+      return atoms.map(cloneAtom);
+    }
 
-      const mergeInto = (target, source) => {
-        if (source.chords) target.chords = [target.chords, source.chords].filter(Boolean).join(' ');
-        if (source.lyric) target.lyric = [target.lyric, source.lyric].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-        if (source.section && !target.section) target.section = source.section;
-      };
-
-      const mergeBefore = (target, source) => {
-        if (source.chords) target.chords = [source.chords, target.chords].filter(Boolean).join(' ');
-        if (source.lyric) target.lyric = [source.lyric, target.lyric].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-        if (source.section && !target.section) target.section = source.section;
-      };
-
-      // First pass: short lyric fragments borrow the next chord when possible,
-      // so pasted charts such as "Bb / joy in chaos / I've got / Gm7 / peace..."
-      // become a readable chord + phrase pair.
-      for (let i = 0; i < out.length; i++) {
-        const current = out[i];
-        if (!isPhrase(current) || !current.lyric || len(current) >= minChars) continue;
-
-        let prev = i - 1;
-        while (prev >= 0 && !isPhrase(out[prev])) prev--;
-        let next = i + 1;
-        while (next < out.length && !isPhrase(out[next])) next++;
-
-        const prevBlocked = prev < 0 || out.slice(prev + 1, i).some(a => a.marker);
-        const nextBlocked = next >= out.length || out.slice(i + 1, next).some(a => a.marker);
-        const half = Math.max(1, minChars / 2);
-
-        if (!prevBlocked && current.chords && len(current) <= half) {
-          mergeInto(out[prev], current);
-          out.splice(i, 1);
-          i--;
-          continue;
-        }
-
-        if (!nextBlocked && out[next]) {
-          mergeBefore(out[next], current);
-          out.splice(i, 1);
-          i--;
-          continue;
-        }
-
-        if (!prevBlocked) {
-          mergeInto(out[prev], current);
-          out.splice(i, 1);
-          i--;
+    function mergeHyphenatedLyricRuns(atoms) {
+      const out = [];
+      for (const atom of atoms) {
+        const prev = out[out.length - 1];
+        if (prev && !prev.marker && !atom.marker && prev.type === 'lyric' && atom.type === 'lyric' && /-$/.test(prev.lyric)) {
+          prev.lyric = cleanLyricFragment(prev.lyric.slice(0, -1) + atom.lyric);
+        } else {
+          out.push(cloneAtom(atom));
         }
       }
+      return out;
+    }
 
-      // Second pass: any remaining short lyric fragment is attached to the
-      // nearest chorded phrase, unless a section/cue boundary blocks it.
-      for (let i = 0; i < out.length; i++) {
-        if (!isPhrase(out[i]) || !out[i].lyric || out[i].chords || len(out[i]) >= minChars) continue;
-        let prev = i - 1;
-        while (prev >= 0 && !isPhrase(out[prev])) prev--;
-        let next = i + 1;
-        while (next < out.length && !isPhrase(out[next])) next++;
+    function mergeAdjacentLyrics(atoms, minChars) {
+      const out = [];
+      let previousWasBlank = false;
 
-        if (next < out.length && out[next].chords) {
-          mergeBefore(out[next], out[i]);
-          out.splice(i, 1);
-          i--;
-        } else if (prev >= 0 && out[prev].chords) {
-          mergeInto(out[prev], out[i]);
-          out.splice(i, 1);
-          i--;
+      for (const atom of atoms) {
+        if (atom.marker === 'blank') {
+          // Blank lines are structural boundaries. Do not merge lyric fragments
+          // across them, even if the next line is short.
+          previousWasBlank = true;
+          continue;
         }
+        if (atom.marker) {
+          previousWasBlank = false;
+          out.push(cloneAtom(atom));
+          continue;
+        }
+
+        const prev = out[out.length - 1];
+        if (!previousWasBlank && prev && !prev.marker && prev.type === 'lyric' && atom.type === 'lyric') {
+          const prevText = cleanLyricFragment(prev.lyric);
+          const nextText = cleanLyricFragment(atom.lyric);
+          const explicitSplit = /[-–—]$/.test(prevText);
+          const continuesNaturally = /^[a-zà-öø-ÿ'’]/.test(nextText) && !isSentenceEndingLyric(prevText);
+
+          // Merge only adjacent lyric-only fragments. Never cross a chord row,
+          // section, cue, repeat instruction, or blank line.
+          if (explicitSplit || (continuesNaturally && lyricCharacterCount(prevText) < minChars)) {
+            prev.lyric = joinLyrics(prevText, nextText);
+            continue;
+          }
+        }
+        previousWasBlank = false;
+        out.push(cloneAtom(atom));
+      }
+      return out;
+    }
+
+    function pairChordRowsForward(atoms) {
+      const out = [];
+
+      for (let i = 0; i < atoms.length; i++) {
+        const atom = atoms[i];
+
+        if (atom.marker === 'blank') {
+          // Formatting will add controlled spacing later. Keep blank rows as
+          // boundaries without letting them affect chord-to-lyric ownership.
+          continue;
+        }
+        if (atom.marker) {
+          out.push(cloneAtom(atom));
+          continue;
+        }
+
+        if (atom.type === 'pair') {
+          out.push({
+            type: 'pair',
+            chords: normalizeChordLine(atom.chords),
+            lyric: cleanLyricFragment(atom.lyric)
+          });
+          continue;
+        }
+
+        if (atom.type === 'chord') {
+          // A standalone chord row owns exactly ONE following lyric/pair row.
+          // Never absorb another chord row. This prevents stacked chord lines
+          // such as "Bbsus" + "Gm7 F" from being combined accidentally.
+          let j = i + 1;
+          while (j < atoms.length && atoms[j].marker === 'blank') j++;
+
+          if (j < atoms.length && !atoms[j].marker &&
+              (atoms[j].type === 'lyric' || atoms[j].type === 'pair')) {
+            const next = atoms[j];
+            const combinedChords = next.type === 'pair' && next.chords
+              ? `${atom.chords} ${next.chords}`
+              : atom.chords;
+            out.push({
+              type: 'pair',
+              chords: normalizeChordLine(combinedChords),
+              lyric: cleanLyricFragment(next.lyric)
+            });
+            i = j;
+          } else {
+            out.push({ type: 'pair', chords: normalizeChordLine(atom.chords), lyric: '' });
+          }
+          continue;
+        }
+
+        if (atom.type === 'lyric') {
+          out.push({ type: 'lyric', lyric: cleanLyricFragment(atom.lyric) });
+          continue;
+        }
+
+        out.push(cloneAtom(atom));
       }
 
       return out;
     }
 
     function formatSongBody(bodyLines, minChars) {
-      const bodyText = bodyLines.join('\n');
-      const atoms = mergeHyphenatedAtoms(collectFormatterAtoms(bodyText));
-      const merged = mergeFormatterAtoms(atoms, minChars);
-      const output = [];
+      let atoms = parseFormatterAtoms(bodyLines.join('\n'));
+      atoms = expandRepeatRequests(atoms);
+      atoms = mergeHyphenatedLyricRuns(atoms);
+      atoms = mergeInterruptedLyricAroundChord(atoms);
+      atoms = mergeAdjacentLyrics(atoms, minChars);
+      atoms = pairChordRowsForward(atoms);
 
-      for (const atom of merged) {
+      const output = [];
+      for (const atom of atoms) {
         if (atom.marker === 'section' || atom.marker === 'cue') {
           if (output.length && output[output.length - 1] !== '') output.push('');
           output.push(atom.text);
@@ -963,10 +1289,73 @@
       return output.join('\n').replace(/\n{3,}/g, '\n\n').trim();
     }
 
+    function isLikelySongTitle(line) {
+      const clean = normalizePastedLine(line);
+      if (!clean) return false;
+      if (isMetadataLine(clean) || isSectionHeader(clean) || isBandCue(clean) || isChordLine(clean) || isRepeatDirective(clean)) return false;
+      if (/^(?:chords?|lyrics?|song\s*title|key|bpm|artist|album|tempo|tuning)\s*:?$/i.test(clean)) return false;
+      return true;
+    }
+
+    function parseSongDocument(raw) {
+      const lines = String(raw || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n');
+      const nonEmpty = [];
+      lines.forEach((line, index) => {
+        const clean = normalizePastedLine(line);
+        if (clean) nonEmpty.push({ index, clean });
+      });
+
+      // Detect Title + BPM + Key clusters. A cluster starts with a title directly
+      // before its metadata and can contain the metadata in either order.
+      const headers = [];
+      for (let i = 0; i < nonEmpty.length; i++) {
+        const firstMeta = parseMetadataLine(nonEmpty[i].clean);
+        if (!firstMeta) continue;
+
+        let secondIndex = -1;
+        let secondMeta = null;
+        for (let j = i + 1; j < nonEmpty.length && j <= i + 2; j++) {
+          const meta = parseMetadataLine(nonEmpty[j].clean);
+          if (meta && meta.type !== firstMeta.type) {
+            secondIndex = j;
+            secondMeta = meta;
+            break;
+          }
+        }
+        if (secondIndex < 0) continue;
+
+        const titleIndex = i - 1;
+        if (titleIndex < 0 || !isLikelySongTitle(nonEmpty[titleIndex].clean)) continue;
+
+        const metaA = firstMeta;
+        const metaB = secondMeta;
+        const bpm = metaA.type === 'bpm' ? metaA.value : metaB.type === 'bpm' ? metaB.value : '';
+        const key = metaA.type === 'key' ? metaA.value : metaB.type === 'key' ? metaB.value : '';
+        const metaStart = Math.min(nonEmpty[i].index, nonEmpty[secondIndex].index);
+        const metaEnd = Math.max(nonEmpty[i].index, nonEmpty[secondIndex].index);
+
+        if (headers.some(h => h.metaStart === metaStart)) continue;
+        headers.push({ title: nonEmpty[titleIndex].clean, titleIndex: nonEmpty[titleIndex].index, metaStart, metaEnd, bpm, key });
+      }
+
+      if (!headers.length) return [{ title: '', key: '', bpm: '', body: lines.slice() }];
+
+      const songs = [];
+      const leadingBody = lines.slice(0, headers[0].titleIndex);
+      for (let i = 0; i < headers.length; i++) {
+        const current = headers[i];
+        const next = headers[i + 1];
+        let body = lines.slice(current.metaEnd + 1, next ? next.titleIndex : lines.length);
+        if (i === 0 && leadingBody.some(line => normalizePastedLine(line))) body = leadingBody.concat(body);
+        songs.push({ title: current.title, key: current.key, bpm: current.bpm, body });
+      }
+      return songs;
+    }
+
     function formatWorshipTogetherText(raw, minChars = getMinimumLyricChars()) {
       const songs = parseSongDocument(raw);
       const formattedSongs = songs.map(song => ({
-        title: song.title,
+        title: cleanLyricFragment(song.title),
         key: song.key,
         bpm: song.bpm,
         body: formatSongBody(song.body, minChars)
@@ -976,8 +1365,9 @@
       formattedSongs.forEach((song, index) => {
         if (index > 0 && output.length) output.push('', '');
         if (song.title) output.push(song.title);
-        if (song.key) output.push(`Key of ${song.key}`);
+        // Match the source/quick-header order: Title, BPM, Key.
         if (song.bpm) output.push(`Bpm ${song.bpm}`);
+        if (song.key) output.push(`Key of ${song.key}`);
         if ((song.title || song.key || song.bpm) && song.body) output.push('');
         if (song.body) output.push(song.body);
       });
@@ -1120,7 +1510,11 @@
 
       document.getElementById('songContent').value = transposedLines.join('\n');
       updatePreview();
-      showToast('All detected songs transposed.');
+      showToast(isolationActive() ? 'Isolated song transposed.' : 'All detected songs transposed.');
+    }
+
+    function isolationActive() {
+      return !!isolatedSongState;
     }
 
     // Kept for compatibility with older browser state if the page was opened
@@ -1240,18 +1634,219 @@
       }, 3500);
     }
 
+    // -----------------------------
+    // Quick metadata header
+    // -----------------------------
+    function insertQuickHeader() {
+      let title = document.getElementById('quickTitle').value.trim();
+      let key = normalizeKeyName(document.getElementById('quickKey').value.trim());
+      let bpm = document.getElementById('quickBpm').value.trim();
+
+      // Also accept one-line shorthand in the Title box: Title | Key | BPM
+      if (title.includes('|')) {
+        const parts = title.split('|').map(x => x.trim());
+        if (parts.length >= 3) {
+          title = parts[0];
+          key = normalizeKeyName(parts[1]);
+          bpm = parts[2];
+          document.getElementById('quickTitle').value = title;
+          document.getElementById('quickKey').value = key;
+          document.getElementById('quickBpm').value = bpm;
+        }
+      }
+
+      if (!title || !key || !bpm) {
+        showToast('Enter Title, Key and BPM first.');
+        return;
+      }
+
+      const textarea = document.getElementById('songContent');
+      const value = textarea.value.replace(/[ \t]+$/gm, '');
+      const block = `${title}\nBpm: ${bpm}\nKey of ${key}`;
+
+      // Quick Header is intentionally append-only. This prevents information
+      // from a separate header field from being inserted into an unrelated
+      // lyric line simply because the editor still has an old caret position.
+      // If the editor is empty, just insert the block. Otherwise append a
+      // clean, standalone song block at the end.
+      const nextValue = value.trim()
+        ? `${value.trim()}\n\n\n${block}`
+        : block;
+
+      textarea.value = nextValue;
+      textarea.focus();
+      textarea.setSelectionRange(nextValue.length, nextValue.length);
+      handleEditorInput();
+      showToast('Song header added as a new block at the end.');
+    }
+
+    // Shortcut: Alt+Shift+H inserts the quick header.
+    document.addEventListener('keydown', (event) => {
+      const target = event.target;
+      const typingField = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      );
+
+      // Do not hijack a user's typing inside any input field. The shortcut is
+      // available when focus is elsewhere (or when the user intentionally
+      // leaves the editor before invoking it).
+      if (!typingField && event.altKey && event.shiftKey && event.key.toLowerCase() === 'h') {
+        event.preventDefault();
+        insertQuickHeader();
+      }
+    });
+
+    // -----------------------------
+    // Song isolation
+    // -----------------------------
+    let isolatedSongState = null;
+
+    function canonicalSongText(song) {
+      const lines = [];
+      if (song.title) lines.push(song.title);
+      if (song.bpm) lines.push(`Bpm: ${song.bpm}`);
+      if (song.key) lines.push(`Key of ${song.key}`);
+      if ((song.title || song.bpm || song.key) && song.body?.length) lines.push('');
+      if (song.body?.length) lines.push(...song.body);
+      return lines.join('\n').trim();
+    }
+
+    function refreshSongSelector() {
+      const selector = document.getElementById('songSelector');
+      if (!selector) return;
+      const songs = parseSongDocument(document.getElementById('songContent').value)
+        .filter(song => song.title || song.key || song.bpm || song.body.some(x => normalizePastedLine(x)));
+
+      selector.innerHTML = '';
+      songs.forEach((song, index) => {
+        const option = document.createElement('option');
+        option.value = String(index);
+        option.textContent = `${index + 1}. ${song.title || `Song ${index + 1}`}`;
+        selector.appendChild(option);
+      });
+
+      if (!songs.length) {
+        selector.innerHTML = '<option value="">No songs detected yet</option>';
+      }
+    }
+
+    function isolateSelectedSong() {
+      const raw = document.getElementById('songContent').value;
+      const songs = parseSongDocument(raw).filter(song => song.title || song.key || song.bpm || song.body.some(x => normalizePastedLine(x)));
+      const selector = document.getElementById('songSelector');
+      const index = Number(selector.value);
+      if (!Number.isInteger(index) || !songs[index]) {
+        setIsolationStatus('No song is available to isolate.', true);
+        return;
+      }
+
+      isolatedSongState = {
+        original: raw,
+        songs: songs.map(song => ({ ...song, body: [...song.body] })),
+        index,
+        title: songs[index].title
+      };
+
+      document.getElementById('songContent').value = canonicalSongText(songs[index]);
+      document.getElementById('isolatedKey').value = songs[index].key || '';
+      updatePreview();
+      setIsolationStatus(`ISOLATED: ${songs[index].title || `Song ${index + 1}`}. Any transpose/edit now affects ONLY this song. Click Apply Back when finished.`);
+    }
+
+    function applyIsolatedKey(targetKey) {
+      if (!targetKey) return;
+      const keyLine = document.getElementById('songContent').value.match(/^Key\s+of\s+([A-G](?:#|b)?)\s*$/im);
+      const currentKey = keyLine ? normalizeKeyName(keyLine[1]) : '';
+      if (!currentKey) {
+        setIsolationStatus('This isolated song has no Key line to change.', true);
+        return;
+      }
+
+      const from = noteToSemitone[currentKey];
+      const to = noteToSemitone[targetKey];
+      if (from === undefined || to === undefined) return;
+      let delta = to - from;
+      if (delta > 6) delta -= 12;
+      if (delta < -6) delta += 12;
+      transpose(delta);
+      document.getElementById('isolatedKey').value = targetKey;
+    }
+
+    function applyIsolatedSong() {
+      if (!isolatedSongState) {
+        setIsolationStatus('Isolate a song first.', true);
+        return;
+      }
+
+      const isolated = parseSongDocument(document.getElementById('songContent').value)[0] || {
+        title: '', key: '', bpm: '', body: []
+      };
+      isolatedSongState.songs[isolatedSongState.index] = isolated;
+      const rebuilt = isolatedSongState.songs.map(canonicalSongText).filter(Boolean).join('\n\n\n');
+      document.getElementById('songContent').value = rebuilt;
+      isolatedSongState = null;
+      updatePreview();
+      refreshSongSelector();
+      setIsolationStatus('Song changes applied back to the full set.');
+    }
+
+    function cancelIsolation() {
+      if (!isolatedSongState) {
+        setIsolationStatus('No isolated song to cancel.', true);
+        return;
+      }
+      document.getElementById('songContent').value = isolatedSongState.original;
+      isolatedSongState = null;
+      updatePreview();
+      refreshSongSelector();
+      document.getElementById('isolatedKey').value = '';
+      setIsolationStatus('Isolation cancelled. Full song set restored.');
+    }
+
+    function setIsolationStatus(message, isError = false) {
+      const el = document.getElementById('isolationStatus');
+      el.textContent = message || '';
+      el.style.color = isError ? '#fca5a5' : 'var(--text-muted)';
+    }
+
+    function handleEditorInput() {
+      if (isolatedSongState) {
+        setIsolationStatus('Isolated song has unsaved edits. Click Apply Back to restore the full set.');
+      }
+      updatePreview();
+      refreshSongSelector();
+    }
+
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
       const textarea = document.getElementById('songContent');
+
+      // Keep the editor as the only live song-data source. Other fields are
+      // intentionally passive until their own button/action is used.
+      ['quickTitle', 'quickKey', 'quickBpm', 'minLyricChars'].forEach(id => {
+        const field = document.getElementById(id);
+        if (!field) return;
+        field.addEventListener('input', () => {
+          // Do not write into the editor from these controls while the user is
+          // typing. Preview-only settings can refresh the preview safely.
+          if (id === 'minLyricChars') updatePreview();
+        });
+      });
+
       textarea.addEventListener('paste', (event) => {
         const pasted = event.clipboardData?.getData('text/plain') || '';
         if (!pasted) return;
 
         event.preventDefault();
         applyFormattedSong(pasted, false);
+        refreshSongSelector();
         showToast('Pasted song automatically formatted.');
       });
 
+
+      refreshSongSelector();
       updatePreview();
     });
   </script>
