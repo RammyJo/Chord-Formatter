@@ -706,11 +706,15 @@
       const t = normalizePastedLine(line);
       // Any standalone parenthesized line is a dynamic/band cue.
       // Parentheses inside a chord token, e.g. C(add9), are NOT a cue.
-      return /^\(.*\)$/.test(t);
+      if (/^\(.*\)$/.test(t)) return true;
+
+      // Also recognize common unparenthesized stage/band directions copied from
+      // song sites. These are instructions to musicians, not lyric text.
+      return /^(?:FULL\s+BAND|DRUMS?\s+ONLY|BAND\s+IN|ALL\s+IN|SOFT(?:LY)?|BUILD(?:\s+UP)?|SLOW(?:LY)?|INSTRUMENT(?:AL)?\s+ONLY|KEYBOARD(?:\s+ONLY)?|PADS?(?:\s+ONLY)?|ACOUSTIC(?:\s+ONLY)?|BASS(?:\s+ONLY)?|GUITAR(?:S)?(?:\s+ONLY)?|DRUMS?\s+AND\s+BASS)$/i.test(t);
     }
 
     function normalizeSectionHeader(line) {
-      const t = normalizePastedLine(line);
+      const t = normalizePastedLine(line).replace(/[:\s]+$/,'').trim();
       if (!t) return null;
       const m = t.match(/^\[?((?:Alt\s+)?(?:Verse|Chorus|Pre[-\s]?Chorus|Half[-\s]?Chorus|Post[-\s]?Chorus|Refrain|Bridge|Pre[-\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)(?:\s*[0-9]+)?(?:\s*[()0-9x-]*)?)\]?$/i);
       if (!m) return null;
