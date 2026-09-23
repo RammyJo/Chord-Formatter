@@ -690,7 +690,9 @@
 
     function normalizeKeyName(key) {
       const k = normalizePastedLine(key);
-      return ({'D#':'Eb','G#':'Ab','A#':'Bb'})[k] || k;
+      if (!k) return '';
+      const canonical = k.charAt(0).toUpperCase() + k.slice(1).toLowerCase();
+      return ({'D#':'Eb','G#':'Ab','A#':'Bb'})[canonical] || canonical;
     }
 
     function parseMetadataLine(line) {
@@ -704,11 +706,14 @@
 
     function isBandCue(line) {
       const t = normalizePastedLine(line);
-      // A standalone parenthesized chord such as (Fdim) is a chord, not a cue.
-      // Other standalone parenthesized text remains a dynamic/band cue.
-      const inner = t.match(/^\((.*)\)$/);
-      if (inner && typeof isChordToken === 'function' && isChordToken(inner[1].trim())) return false;
-      return /^\(.*\)$/.test(t);
+      // A standalone parenthesized line is normally a dynamic/band cue,
+      // except when the contents are actually chord(s), e.g. (Fdim) or (G Fdim A).
+      if (!/^\(.*\)$/.test(t)) return false;
+      const inner = t.slice(1, -1).trim();
+      if (!inner) return true;
+      const parts = inner.split(/\s+/).filter(Boolean);
+      const allChords = parts.length > 0 && parts.every(p => isChordToken(p) || isRepeatCountToken(p));
+      return !allChords;
     }
 
     function normalizeSectionHeader(line) {
@@ -750,14 +755,22 @@
       return /^[A-G](?:b|#)?(?:maj|min|m|M|sus[24]?|dim|aug|add[0-9]+|[0-9]+|no[357]|\+|-|\((?:maj|min|m|sus[24]?|dim|aug|add)?[0-9]+\))*$/.test(s);
     }
 
+    function isRepeatCountToken(token) {
+      const t = normalizePastedLine(token);
+      // Common repeat markers: 2x, x2, (2x), (x2), 3X, x 4, 5 x, etc.
+      return /^\(?\s*(?:(?:x|×)\s*\d+|\d+\s*(?:x|×))\s*\)?$/i.test(t);
+    }
+
     function cleanChordToken(token) {
       let t = normalizePastedLine(token);
       t = t.replace(/^\|+|\|+$/g, '');
-      t = t.replace(/(?:ll|l|\([0-9]+x\))+$/i, '');
+      t = t.replace(/(?:ll|l|\(\s*(?:x|×)?\d+\s*(?:x|×)?\s*\))+$/i, '');
       return t;
     }
 
     function isChordToken(token) {
+      if (isRepeatCountToken(token)) return false;
+      if (/^all$/i.test(normalizePastedLine(token))) return false;
       let t = cleanChordToken(token);
       if (!t) return true;
       if (/^[|/\-]+$/.test(t)) return true;
@@ -776,9 +789,11 @@
       if (!t || isSectionHeader(t) || isBandCue(t) || isRepeatDirective(t) || parseMetadataLine(t)) return false;
       const tokens = t.split(/\s+/).filter(Boolean);
       if (!tokens.length) return false;
-      const valid = tokens.filter(isChordToken).length;
-      // A single chord is enough. For multi-token rows, require every token to be chord-like.
-      return valid === tokens.length;
+      const valid = tokens.filter(token => isChordToken(token) || isRepeatCountToken(token)).length;
+      const hasChord = tokens.some(isChordToken);
+      // A repeat marker belongs to the chord progression, but a marker by itself
+      // is not a chord line.
+      return hasChord && valid === tokens.length;
     }
 
     function normalizeChordLine(line) {
@@ -1302,6 +1317,79 @@
       return prefixed;
     }
 
+    function inferChordKey(content) {
+      const roots = [];
+      const lines = String(content || '').replace(/\r\n?/g,'\n').split('\n');
+
+      for (const rawLine of lines) {
+        const line = normalizePastedLine(rawLine);
+        if (!line || isSectionHeader(line) || isBandCue(line) || isRepeatDirective(line) || parseMetadataLine(line)) continue;
+        if (!(isChordLine(line) || isPipeChordLine(line))) continue;
+
+        for (const token of line.split(/\s+/).filter(Boolean)) {
+          if (isRepeatCountToken(token)) continue;
+          const cleaned = cleanChordToken(token);
+          if (!cleaned || /^[|/\-]+$/.test(cleaned)) continue;
+          for (const piece of cleaned.split('-')) {
+            const m = piece.match(/^([A-G](?:b|#)?)/);
+            if (m) {
+              const semi = noteToSemitone[normalizeKeyName(m[1])];
+              if (semi !== undefined) roots.push(semi);
+            }
+          }
+        }
+      }
+
+      if (!roots.length) return '';
+
+      // Infer the chart's major key from the chord-root distribution.
+      // I, V and IV carry more weight; out-of-key roots are penalized.
+      const degreeWeight = {0:4.5, 2:1.5, 4:1, 5:2.5, 7:3.5, 9:2, 11:0.5};
+      let bestKey = '';
+      let bestScore = -Infinity;
+      let secondScore = -Infinity;
+
+      for (let key = 0; key < 12; key++) {
+        let score = 0;
+        for (const root of roots) {
+          const interval = (root - key + 12) % 12;
+          score += degreeWeight[interval] ?? -2.5;
+        }
+        if (score > bestScore) {
+          secondScore = bestScore;
+          bestScore = score;
+          bestKey = flatScale[key];
+        } else if (score > secondScore) {
+          secondScore = score;
+        }
+      }
+
+      const confidence = roots.length >= 4 ? bestScore - secondScore : 0;
+      return (roots.length >= 4 && confidence >= 2.5) ? bestKey : '';
+    }
+
+    function transposeContentFromKeyToTarget(raw, fromKey, targetKey) {
+      const from = noteToSemitone[normalizeKeyName(fromKey)];
+      const to = noteToSemitone[normalizeKeyName(targetKey)];
+      if (from === undefined || to === undefined) return String(raw || '');
+      let semitones = to - from;
+      if (semitones > 6) semitones -= 12;
+      if (semitones < -6) semitones += 12;
+      if (semitones === 0) return String(raw || '');
+
+      const target = normalizeKeyName(targetKey);
+      const targetSemi = noteToSemitone[target];
+      const preferFlats = ['F','Bb','Eb','Ab','Db','Gb'].includes(flatScale[targetSemi]);
+
+      return String(raw || '').replace(/\r\n?/g,'\n').split('\n').map(line => {
+        if (/^\s*Key\s+of\s+[A-G](?:#|b)?\s*$/i.test(line)) {
+          return line.replace(/^([\s]*Key\s+of\s+)[A-G](?:#|b)?\s*$/i, `$1${target}`);
+        }
+        if (isBandCue(line) || isSectionHeader(line) || isRepeatDirective(line) || parseMetadataLine(line)) return line;
+        return transposeChordRowsInLine(line, semitones, preferFlats);
+      }).join('\n');
+    }
+
     function transpose(semitones){
       const raw=document.getElementById('songContent').value;
       const keyMatches=[...raw.matchAll(/^Key\s+of\s+([A-G](?:#|b)?)\s*$/gim)];
@@ -1409,10 +1497,20 @@
       const i=Number(document.getElementById('songSelector').value);
       if(!songs[i]){setIsolationStatus('No song is available to isolate.',true);return;}
       isolatedSongState={original:raw,startLine:songs[i].startLine,endLine:songs[i].endLine,index:i};
-      setEditor(canonicalSongText(songs[i]));
+
+      // A chart may have a metadata key that does not match its actual chord chart.
+      // When the song is isolated, align its chords to the header key automatically.
+      let isolatedText=canonicalSongText(songs[i]);
+      const declaredKey=normalizeKeyName(songs[i].key||'');
+      const detectedChordKey=inferChordKey(isolatedText);
+      if(declaredKey && detectedChordKey && declaredKey !== detectedChordKey) {
+        isolatedText=transposeContentFromKeyToTarget(isolatedText, detectedChordKey, declaredKey);
+      }
+
+      setEditor(isolatedText);
       document.getElementById('songSelector').disabled=true;
-      document.getElementById('isolatedKey').value=songs[i].key||'';
-      setIsolationStatus(`ISOLATED: ${songs[i].title||`Song ${i+1}`}. Transpose and edit only this song, then click Save to Set.`);
+      document.getElementById('isolatedKey').value=declaredKey;
+      setIsolationStatus(`ISOLATED: ${songs[i].title||`Song ${i+1}`}. Chart aligned to Key of ${declaredKey}. Transpose and edit only this song, then click Save to Set.`);
     }
 
     function applyIsolatedKey(target){
