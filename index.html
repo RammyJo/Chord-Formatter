@@ -146,6 +146,47 @@
       align-items: center;
     }
 
+    .copy-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .chord-checker-results {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .chord-issue {
+      padding: 8px 10px;
+      border: 1px solid #353535;
+      border-radius: 6px;
+      background: #101010;
+      font-size: 12px;
+      line-height: 1.35;
+      cursor: pointer;
+    }
+
+    .chord-issue:hover {
+      background: #181818;
+    }
+
+    .chord-issue strong {
+      color: #fff;
+    }
+
+    .chord-issue code {
+      color: #fca5a5;
+      font-family: Consolas, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
     .min-lyric-control {
       display: inline-flex;
       align-items: center;
@@ -176,7 +217,7 @@
 
     .isolation-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.8fr) auto minmax(100px, 1fr) auto;
+      grid-template-columns: minmax(0, 1.8fr) auto minmax(90px, 110px) minmax(80px, 100px) auto;
       gap: 8px;
       align-items: end;
     }
@@ -482,7 +523,7 @@
       .isolation-grid {
         grid-template-columns: 1fr auto;
       }
-      .isolation-grid > :nth-child(4) {
+      .isolation-grid > :nth-child(5) {
         width: 100%;
       }
     }
@@ -568,9 +609,14 @@
       <div class="card workspace-card">
         <div class="card-title">
           <span>Google Docs Live Preview</span>
-          <button type="button" class="success" onclick="copyForGoogleDocs()">
-            Copy for Google Docs
-          </button>
+          <div class="copy-actions">
+            <button type="button" class="success" onclick="copyForGoogleDocs()">
+              Copy for Google Docs
+            </button>
+            <button type="button" onclick="copyForProPresenter()" title="Copy song title, section headers, and lyrics only. Chords, BPM, key, and cues are excluded.">
+              Copy for ProPresenter
+            </button>
+          </div>
         </div>
 
         <div class="legend">
@@ -648,6 +694,7 @@
             <option value="">Set key</option>
             <option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option>
           </select>
+          <input id="isolatedBpm" class="small-number" type="number" min="1" max="300" step="1" placeholder="BPM" aria-label="Edit isolated song BPM" oninput="applyIsolatedBpm(this.value)">
           <button type="button" onclick="applyIsolatedSong()">Save to Set</button>
         </div>
         <div class="isolation-secondary">
@@ -655,6 +702,16 @@
         </div>
         <div class="tool-help"><strong>Use:</strong> Select a song → <strong>Isolate</strong> → transpose/edit → <strong>Save to Set</strong>. Only that song is changed.</div>
         <div id="isolationStatus" class="status-text"></div>
+      </div>
+
+      <div class="card tools-card chord-checker-card">
+        <div class="card-title">
+          <span>Chord Checker</span>
+          <button type="button" onclick="runChordChecker()">Check Chords</button>
+        </div>
+        <div id="chordCheckerStatus" class="status-text">No check run yet.</div>
+        <div id="chordCheckerResults" class="chord-checker-results"></div>
+        <div class="tool-help">Tracks chord-looking entries that do not match the formatter's chord rules. Nothing is auto-corrected.</div>
       </div>
     </div>
   </div>
@@ -671,7 +728,7 @@
       'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11, Cb: 11
     };
 
-    const SECTION_RE = /^(?:Alt\s+)?(?:Verse|Chorus|Pre[-\s]?Chorus|Half[-\s]?Chorus|Post[-\s]?Chorus|Refrain|Bridge|Pre[-\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)(?:\s*[0-9]+)?$/i;
+    const SECTION_RE = /^(?:Alt\s+)?(?:Prelude|Verse|Chorus|Pre[-\s]?Chorus|Half[-\s]?Chorus|Post[-\s]?Chorus|Refrain|Bridge|Pre[-\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)(?:\s*[0-9]+)?[\s:()0-9x-]*$/i;
     const REPEAT_RE = /\bREPEAT\s+(?:ALT\s+)?(?:VERSE|CHORUS|PRE[-\s]?CHORUS|HALF[-\s]?CHORUS|POST[-\s]?CHORUS|REFRAIN|BRIDGE|PRE[-\s]?BRIDGE|INTRO|OUTRO|TAG|INSTRUMENTAL|INTERLUDE|TURNAROUND|ADLIB|ENDING|VAMP|BREAKDOWN|HOOK|REPRISE|CODA|MEDLEY)(?:\s*[0-9]+)?(?:\s*[0-9]+X)?(?:\s+REPEAT\s+|$)/ig;
 
     function normalizePastedLine(line) {
@@ -708,18 +765,27 @@
       const t = normalizePastedLine(line);
       // A standalone parenthesized line is normally a dynamic/band cue,
       // except when the contents are actually chord(s), e.g. (Fdim) or (G Fdim A).
-      if (!/^\(.*\)$/.test(t)) return false;
-      const inner = t.slice(1, -1).trim();
-      if (!inner) return true;
-      const parts = inner.split(/\s+/).filter(Boolean);
-      const allChords = parts.length > 0 && parts.every(p => isChordToken(p) || isRepeatCountToken(p));
-      return !allChords;
+      if (/^\(.*\)$/.test(t)) {
+        const inner = t.slice(1, -1).trim();
+        if (!inner) return true;
+        const parts = inner.split(/\s+/).filter(Boolean);
+        const allChords = parts.length > 0 && parts.every(p => isChordToken(p) || isRepeatCountToken(p));
+        return !allChords;
+      }
+
+      // Recognize common performance instructions even when they are not in parentheses
+      // or on a fixed cue list. Keep the test conservative so normal lyric sentences
+      // are not routinely treated as cues.
+      const cueWord = /\b(?:drums?|bass|guitar|keys?|keyboard|piano|pads?|strings?|synth|electric|band|pasok|build|pause|hold|fill|enter|fade|drop|mute|unison|solo|adlib|soft|loud|quiet|slow|fast)\b/i;
+      const instructionPhrase = /(?:\b(?:drums?|bass|guitar|keys?|keyboard|piano|pads?|strings?|synth|electric)\s+(?:only|pasok|enter|first(?:\s+part)?|mag\s+fill|fill)|\b(?:full\s+band|proceed\s+to\s+full\s+band|band\s+(?:in|enter|pasok))\b|\b(?:build(?:\s*up)?|pause|hold|drop|mute|fade|unison|solo|adlib)\b)/i;
+      const uppercaseCue = /[A-Z]{3,}/.test(t) && cueWord.test(t);
+      return !!(instructionPhrase.test(t) || (cueWord.test(t) && /!{2,}/.test(t)) || uppercaseCue);
     }
 
     function normalizeSectionHeader(line) {
       const t = normalizePastedLine(line);
       if (!t) return null;
-      const m = t.match(/^\[?((?:Alt\s+)?(?:Verse|Chorus|Pre[-\s]?Chorus|Half[-\s]?Chorus|Post[-\s]?Chorus|Refrain|Bridge|Pre[-\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)(?:\s*[0-9]+)?(?:\s*[()0-9x-]*)?)\]?$/i);
+      const m = t.match(/^\[?((?:Alt\s+)?(?:Prelude|Verse|Chorus|Pre[-\s]?Chorus|Half[-\s]?Chorus|Post[-\s]?Chorus|Refrain|Bridge|Pre[-\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)(?:\s*[0-9]+)?)(?:\s*[:\-]\s*)?\]?$/i);
       if (!m) return null;
       return `[${m[1].replace(/\s+/g, ' ').trim()}]`;
     }
@@ -773,6 +839,16 @@
       if (/^all$/i.test(normalizePastedLine(token))) return false;
       let t = cleanChordToken(token);
       if (!t) return true;
+
+      // A chord enclosed in parentheses is still a chord. This also supports
+      // parenthesized chord groups such as (G Fdim A).
+      if (/^\(.*\)$/.test(t)) {
+        const inner = t.slice(1, -1).trim();
+        const parts = inner.split(/\s+/).filter(Boolean);
+        if (parts.length && parts.every(part => isChordToken(part) || isRepeatCountToken(part))) return true;
+      }
+
+      // Chord roots are case-insensitive in pasted source.
       if (/^[|/\-]+$/.test(t)) return true;
       // Transition notation: D-A or C#m-D. Keep this as one displayed token.
       const transitionParts = t.split('-');
@@ -781,7 +857,8 @@
       }
       const slash = t.split('/');
       if (slash.length > 2) return false;
-      return slash.every(chordBodyValid);
+      if (slash.some(part => !part)) return false;
+      return slash.every(part => chordBodyValid(part.charAt(0).toUpperCase() + part.slice(1)));
     }
 
     function isChordLine(line) {
@@ -858,7 +935,7 @@
           if (sec) atoms.push({marker:'section', text:sec});
           else if (isBandCue(work)) atoms.push({marker:'cue', text:work});
           else {
-            const combo = work.match(/^\[?((?:Alt\s+)?(?:Verse|Chorus|Pre[-\s]?Chorus|Half[-\s]?Chorus|Post[-\s]?Chorus|Refrain|Bridge|Pre[-\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)(?:\s*[0-9]+)?)[\]:-]\s+(.+)$/i);
+            const combo = work.match(/^\[?((?:Alt\s+)?(?:Prelude|Verse|Chorus|Pre[-\s]?Chorus|Half[-\s]?Chorus|Post[-\s]?Chorus|Refrain|Bridge|Pre[-\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)(?:\s*[0-9]+)?)[\]:-]\s+(.+)$/i);
             if (combo) {
               atoms.push({marker:'section', text:`[${combo[1].replace(/\s+/g,' ').trim()}]`});
               work = combo[2].trim();
@@ -1237,15 +1314,25 @@
     }
 
     function transposeSingleChordName(name, semitones, preferFlats) {
-      const m = String(name || '').match(/^([A-G](?:b|#)?)(.*)$/);
+      const m = String(name || '').match(/^([A-Ga-g](?:b|#)?)(.*)$/);
       if (!m) return name;
-      return transposeSingleNote(m[1], semitones, preferFlats) + m[2];
+      const root = m[1].charAt(0).toUpperCase() + m[1].slice(1);
+      return transposeSingleNote(root, semitones, preferFlats) + m[2];
     }
 
     function transposeChord(chord, semitones, preferFlats) {
       let value = normalizePastedLine(chord);
       if (!value) return value;
       if (/^[|]+$/.test(value)) return value;
+
+      // Preserve outer parentheses around one chord or a chord group.
+      if (/^\(.*\)$/.test(value)) {
+        const inner = value.slice(1, -1).trim();
+        const parts = inner.split(/\s+/).filter(Boolean);
+        if (parts.length && parts.every(part => isChordToken(part) || isRepeatCountToken(part))) {
+          return `(${parts.map(part => isRepeatCountToken(part) ? part : transposeChord(part, semitones, preferFlats)).join(' ')})`;
+        }
+      }
 
       // Handle D-A / C#m-D transitions.
       if (value.includes('-')) {
@@ -1451,6 +1538,154 @@
       catch(e){ const listener=ev=>{ev.clipboardData.setData('text/html',gdocHtml);ev.clipboardData.setData('text/plain',plainText);ev.preventDefault();}; document.addEventListener('copy',listener); document.execCommand('copy'); document.removeEventListener('copy',listener); showToast(); }
     }
 
+    function stripChordsFromLyricLine(line){
+      let t=normalizePastedLine(line);
+      if(!t) return '';
+      // Remove bracketed chord markup such as [G] or [C(add9)].
+      t=t.replace(/\[([^\]]+)\]/g,(m,ch)=>isChordToken(ch)?'':m);
+      // Remove chord prefixes such as "G D/F# Amazing Grace".
+      const parts=t.split(/\s+/).filter(Boolean);
+      let n=0;
+      while(n<parts.length && isChordToken(parts[n])) n++;
+      const firstChord=parts[0]||'';
+      const unambiguousSingleChord=/^[A-Ga-g](?:b|#)?(?:m|min|maj|sus|dim|aug|add|no|[0-9]|\(|\/|\+|-)/i.test(firstChord);
+      if(n>1 || (n===1 && unambiguousSingleChord && n<parts.length)) t=parts.slice(n).join(' ');
+      return cleanLyricFragment(t);
+    }
+
+    function buildProPresenterText(){
+      const content=document.getElementById('songContent').value;
+      const songs=parseSongDocument(content).filter(s=>s.title||s.key||s.bpm||s.body.some(x=>normalizePastedLine(x)));
+      const blocks=[];
+
+      for(const s of songs){
+        const lines=[];
+        if(s.title) lines.push(s.title);
+        for(const rawLine of s.body||[]){
+          const t=normalizePastedLine(rawLine);
+          if(!t){
+            if(lines.length && lines.at(-1)!=='') lines.push('');
+            continue;
+          }
+          if(isSectionHeader(t)){ lines.push(normalizeSectionHeader(t)); continue; }
+          if(isBandCue(t) || isChordLine(t) || isRepeatDirective(t) || parseMetadataLine(t)) continue;
+          const lyric=stripChordsFromLyricLine(t);
+          if(lyric) lines.push(lyric);
+        }
+        while(lines.length && lines.at(-1)==='') lines.pop();
+        blocks.push(lines.join('\n'));
+      }
+
+      return blocks.filter(Boolean).join('\n\n\n').trim();
+    }
+
+    async function copyForProPresenter(){
+      const text=buildProPresenterText();
+      if(!text){ showToast('No lyrics/section content found to copy.'); return; }
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch(e){
+        const ta=document.createElement('textarea');
+        ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); ta.remove();
+      }
+      showToast('Copied for ProPresenter: lyrics and section headers only.');
+    }
+
+    function applyIsolatedBpm(value){
+      if(!isolatedSongState) return;
+      const bpm=String(value||'').trim();
+      if(!/^\d+(?:\.\d+)?$/.test(bpm)) return;
+      const el=document.getElementById('songContent');
+      let raw=el.value.replace(/\r\n?/g,'\n');
+      if(/^BPM\s*:?[ ]*\d+(?:\.\d+)?\s*$/im.test(raw)) {
+        raw=raw.replace(/^BPM\s*:?[ ]*\d+(?:\.\d+)?\s*$/im,`Bpm: ${bpm}`);
+      } else {
+        const lines=raw.split('\n');
+        const titleIndex=lines.findIndex(line=>normalizePastedLine(line) && !parseMetadataLine(line));
+        const insertAt=titleIndex>=0?titleIndex+1:0;
+        lines.splice(insertAt,0,`Bpm: ${bpm}`);
+        raw=lines.join('\n');
+      }
+      el.value=raw;
+      updatePreview();
+      refreshSongSelector();
+      setIsolationStatus('Isolated song BPM updated. Click Save to Set to keep it.');
+      refreshChordChecker(false);
+    }
+
+    function runChordChecker(){ refreshChordChecker(true); }
+
+    function chordCheckerCandidate(token){
+      let t=cleanChordToken(token);
+      if(!t || isRepeatCountToken(t)) return false;
+      if(/^\(.*\)$/.test(t)) t=t.slice(1,-1).trim();
+      const m=t.match(/^([A-Ga-g](?:b|#)?)(.*)$/);
+      if(!m) return false;
+      const rest=m[2];
+      // Catch likely chord typos such as Cmja7, Cadd, C//G, C#9, etc.,
+      // while avoiding ordinary lyric words such as "Amazing".
+      return /[0-9#b()\/+-]/.test(rest) || /^(?:m|maj|min|sus|dim|aug|add|no)/i.test(rest);
+    }
+
+    function refreshChordChecker(showToastMessage=false){
+      const status=document.getElementById('chordCheckerStatus');
+      const results=document.getElementById('chordCheckerResults');
+      if(!status || !results) return;
+
+      const raw=document.getElementById('songContent').value.replace(/\r\n?/g,'\n');
+      const issues=[];
+      const lines=raw.split('\n');
+
+      lines.forEach((rawLine,index)=>{
+        const line=normalizePastedLine(rawLine);
+        if(!line || isSectionHeader(line) || isBandCue(line) || isRepeatDirective(line) || parseMetadataLine(line)) return;
+        const tokens=line.split(/\s+/).filter(Boolean);
+        const chordCount=tokens.filter(isChordToken).length;
+        const suspicious=tokens.filter(chordCheckerCandidate).filter(token=>!isChordToken(token));
+
+        if(suspicious.length && chordCount>0){
+          issues.push({
+            line:index+1,
+            tokens:suspicious,
+            text:line,
+            reason:'This line contains chord-looking text that the formatter does not recognize as a valid chord.'
+          });
+        } else if(suspicious.length>=2 && tokens.length<=6){
+          issues.push({
+            line:index+1,
+            tokens:suspicious,
+            text:line,
+            reason:"Several entries look like chord symbols but do not match the formatter's chord rules."
+          });
+        }
+      });
+
+      if(!issues.length){
+        status.textContent='No obvious chord issues found.';
+        status.style.color='var(--text-muted)';
+        results.innerHTML='';
+        if(showToastMessage) showToast('Chord check complete: no obvious issues found.');
+        return;
+      }
+
+      status.textContent=`${issues.length} possible chord issue${issues.length===1?'':'s'} found. Nothing was changed.`;
+      status.style.color='#fca5a5';
+      results.innerHTML=issues.map(issue=>`<div class="chord-issue" data-line="${issue.line}" title="Click to select this line in the editor">
+        <strong>Line ${issue.line}</strong> · ${escapeHtml(issue.reason)}<br>
+        <code>${escapeHtml(issue.text)}</code>
+      </div>`).join('');
+      [...results.querySelectorAll('.chord-issue')].forEach(el=>el.addEventListener('click',()=>{
+        const targetLine=Number(el.dataset.line);
+        const ta=document.getElementById('songContent');
+        const all=ta.value.split('\n');
+        const start=all.slice(0,targetLine-1).reduce((n,x)=>n+x.length+1,0);
+        ta.focus();
+        ta.setSelectionRange(start,start+all[targetLine-1].length);
+      }));
+      if(showToastMessage) showToast(`Chord check: ${issues.length} possible issue${issues.length===1?'':'s'} found.`);
+    }
+
     function showToast(message='Copied to Clipboard! Ready to paste directly into Google Docs.'){ const t=document.getElementById('toast'); t.textContent=message; t.style.display='block'; clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>t.style.display='none',3000); }
 
     function insertQuickHeader(){
@@ -1510,7 +1745,9 @@
       setEditor(isolatedText);
       document.getElementById('songSelector').disabled=true;
       document.getElementById('isolatedKey').value=declaredKey;
-      setIsolationStatus(`ISOLATED: ${songs[i].title||`Song ${i+1}`}. Chart aligned to Key of ${declaredKey}. Transpose and edit only this song, then click Save to Set.`);
+      document.getElementById('isolatedBpm').value=songs[i].bpm||'';
+      refreshChordChecker(false);
+      setIsolationStatus(`ISOLATED: ${songs[i].title||`Song ${i+1}`}. Chart aligned to Key of ${declaredKey}. Edit BPM/key, transpose, and edit only this song, then click Save to Set.`);
     }
 
     function applyIsolatedKey(target){
@@ -1534,7 +1771,9 @@
       const finalText=merged.join('\n').replace(/\n{4,}/g,'\n\n\n').trim();
       isolatedSongState=null;
       document.getElementById('isolatedKey').value='';
+      document.getElementById('isolatedBpm').value='';
       setEditor(finalText);
+      refreshChordChecker(false);
       document.getElementById('songSelector').disabled=false;
       setIsolationStatus('Song changes saved to the full set.');
     }
@@ -1544,14 +1783,16 @@
       const original=isolatedSongState.original;
       isolatedSongState=null;
       document.getElementById('isolatedKey').value='';
+      document.getElementById('isolatedBpm').value='';
       setEditor(original);
+      refreshChordChecker(false);
       document.getElementById('songSelector').disabled=false;
       setIsolationStatus('Isolation cancelled.');
     }
 
     function setIsolationStatus(m,e=false){ const x=document.getElementById('isolationStatus'); if(x){x.textContent=m||'';x.style.color=e?'#fca5a5':'var(--text-muted)';} }
 
-    function handleEditorInput(){ if(isolatedSongState) setIsolationStatus('Isolated song has unsaved edits. Click Save to Set.'); updatePreview(); refreshSongSelector(); }
+    function handleEditorInput(){ if(isolatedSongState) setIsolationStatus('Isolated song has unsaved edits. Click Save to Set.'); updatePreview(); refreshSongSelector(); refreshChordChecker(false); }
 
     document.addEventListener('keydown',e=>{ const t=e.target; const typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable); if(!typing&&e.altKey&&e.shiftKey&&e.key.toLowerCase()==='h'){e.preventDefault();insertQuickHeader();} });
 
@@ -1561,7 +1802,7 @@
       // Keep the Editing section as the user's source of truth.  Pasting no longer
       // rewrites the user's text behind their back; the preview formats it live.
       // This prevents repeated pastes/edits from accumulating parser changes.
-      refreshSongSelector(); updatePreview();
+      refreshSongSelector(); updatePreview(); refreshChordChecker(false);
     });
   </script>
 </body>
