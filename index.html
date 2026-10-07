@@ -932,23 +932,6 @@
     <!-- Tools / Adjustments -->
     <div class="tools-layout">
       <div class="card tools-card">
-        <div class="card-title"><span>Chord & Format Adjustments</span></div>
-        <div class="adjustment-controls">
-          <div class="adjustment-buttons">
-            <button type="button" onclick="autoFormatSong()" class="primary" title="Repair messy chart structure while preserving musical order">Auto-Repair & Format</button>
-            <button type="button" onclick="cleanChordSpacing()" title="Collapse spaces between chords to 1 space">1 Space Per Chord</button>
-            <button type="button" onclick="transpose(-1)" title="Transpose Down 1 Semitone">-1 Semitone</button>
-            <button type="button" onclick="transpose(1)" title="Transpose Up 1 Semitone">+1 Semitone</button>
-          </div>
-          <div class="min-lyric-control">
-            <label for="minLyricChars">Min lyric chars</label>
-            <input class="small-number" type="number" id="minLyricChars" min="1" max="100" value="28" oninput="updatePreview()" title="Changes how lyric-only lines are grouped in the preview without rewriting your editor text">
-          </div>
-        </div>
-        <div class="tool-help">These controls adjust the selected working set. The editor above remains your source text.</div>
-      </div>
-
-      <div class="card tools-card">
         <div class="card-title"><span>Quick Song Header</span></div>
         <div class="quick-header-grid">
           <div>
