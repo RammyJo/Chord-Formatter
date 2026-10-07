@@ -19,6 +19,7 @@
       --champions-red: #ff1f1f;
       --accent-cyan: #00ffff;
       --accent-yellow: #ffff00;
+      --accent-pink: #d47f98;
       --accent-green: #00ff00;
     }
 
@@ -444,6 +445,15 @@
       padding: 0 1px;
     }
 
+    .gdoc-pink {
+      background-color: var(--accent-pink);
+      color: #000000;
+      font-weight: bold;
+      font-family: "Arial", sans-serif;
+      font-size: 11pt;
+      padding: 0 1px;
+    }
+
     .gdoc-green {
       background-color: #00ff00;
       color: #000000;
@@ -656,7 +666,11 @@
           </div>
           <div class="legend-item">
             <div class="legend-color" style="background: #ffff00;"></div>
-            <span>Yellow: Chords & Section Tags</span>
+            <span>Yellow: Chords</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #d47f98;"></div>
+            <span>Pink: Song Structure</span>
           </div>
           <div class="legend-item">
             <div class="legend-color" style="background: #00ff00;"></div>
@@ -756,7 +770,8 @@
       'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11, Cb: 11
     };
 
-    const SECTION_RE = /^(?:Alt\s+)?(?:Prelude|Verse|Chorus|Pre[-\s]?Chorus|Half[-\s]?Chorus|Post[-\s]?Chorus|Refrain|Bridge|Pre[-\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)(?:\s*[0-9]+)?[\s:()0-9x-]*$/i;
+    // Song structures are intentionally bracketed. This avoids confusing them with chord names.
+    const SECTION_RE = /^\[[^\[\]\r\n]{1,60}\]$/;
     const REPEAT_RE = /\bREPEAT\s+(?:ALT\s+)?(?:VERSE|CHORUS|PRE[-\s]?CHORUS|HALF[-\s]?CHORUS|POST[-\s]?CHORUS|REFRAIN|BRIDGE|PRE[-\s]?BRIDGE|INTRO|OUTRO|TAG|INSTRUMENTAL|INTERLUDE|TURNAROUND|ADLIB|ENDING|VAMP|BREAKDOWN|HOOK|REPRISE|CODA|MEDLEY)(?:\s*[0-9]+)?(?:\s*[0-9]+X)?(?:\s+REPEAT\s+|$)/ig;
 
     function normalizePastedLine(line) {
@@ -791,8 +806,14 @@
 
     function isBandCue(line) {
       const t = normalizePastedLine(line);
-      // A standalone parenthesized line is normally a dynamic/band cue,
-      // except when the contents are actually chord(s), e.g. (Fdim) or (G Fdim A).
+      if (!t) return false;
+
+      // Structure always wins. A bracketed line is a structure, not a cue.
+      if (isSectionHeader(t)) return false;
+      if (isRepeatDirective(t) || parseMetadataLine(t)) return false;
+
+      // Parentheses are the strongest cue signal, but chord(s) inside parentheses
+      // are still chords: (Fdim), (A), (G Fdim A), etc.
       if (/^\(.*\)$/.test(t)) {
         const inner = t.slice(1, -1).trim();
         if (!inner) return true;
@@ -801,21 +822,72 @@
         return !allChords;
       }
 
-      // Recognize common performance instructions even when they are not in parentheses
-      // or on a fixed cue list. Keep the test conservative so normal lyric sentences
-      // are not routinely treated as cues.
-      const cueWord = /\b(?:drums?|bass|guitar|keys?|keyboard|piano|pads?|strings?|synth|electric|band|pasok|build|pause|hold|fill|enter|fade|drop|mute|unison|solo|adlib|soft|loud|quiet|slow|fast)\b/i;
-      const instructionPhrase = /(?:\b(?:drums?|bass|guitar|keys?|keyboard|piano|pads?|strings?|synth|electric)\s+(?:only|pasok|enter|first(?:\s+part)?|mag\s+fill|fill)|\b(?:full\s+band|proceed\s+to\s+full\s+band|band\s+(?:in|enter|pasok))\b|\b(?:build(?:\s*up)?|pause|hold|drop|mute|fade|unison|solo|adlib)\b)/i;
-      const uppercaseCue = /[A-Z]{3,}/.test(t) && cueWord.test(t);
-      return !!(instructionPhrase.test(t) || (cueWord.test(t) && /!{2,}/.test(t)) || uppercaseCue);
+      // Strong performance / band instruction vocabulary.
+      const instruments = /\b(?:drums?|bass|guitar|keys?|keyboard|piano|pads?|strings?|synth|electric|acoustic|band|vocals?|voice|percussion|organ|cajon|click)\b/i;
+      const actions = /\b(?:only|pasok|enter|enters|come\s+in|in|first(?:\s+part)?|second(?:\s+part)?|play|plays|mag\s+fill|fill|build(?:\s*up|ing)?|pause|hold|stop|stops|break|breakdown|fade|drop|mute|unmute|unison|solo|adlib|ad\s+lib|soft|softer|loud|louder|quiet|slow|slower|fast|faster|full|proceed|add|remove|bring|back\s+in|kick\s+in|cut\s+to|leave)\b/i;
+
+      // Very common cues can stand alone.
+      if (/^(?:full\s+band|band\s+in|band\s+pasok|drums?\s+only|bass\s+only|guitar\s+only|keys?\s+only|soft|quiet|loud|build(?:\s*up)?|pause|break|breakdown|solo|adlib|instrumental|vocal\s+only)$/i.test(t)) return true;
+
+      // Short instruction-like lines with an instrument + action are cues.
+      const shortEnough = t.length <= 90;
+      if (shortEnough && instruments.test(t) && actions.test(t)) return true;
+
+      // Instructions that move into a song section. These are cues, not structures.
+      if (shortEnough && /\b(?:proceed\s+to|go\s+to|back\s+to|come\s+to|papunta(?:ng)?|papasok(?:na)?|pasok|tuloy(?:sa)?|punta(?:sa)?|lipat(?:sa)?|sunod)\b/i.test(t) && /\b(?:full\s+band|band|verse|chorus|pre\s*[- ]?chorus|bridge|intro|outro|instrumental|interlude|tag)\b/i.test(t)) return true;
+
+      // Short Taglish movement/instruction phrases such as "papuntang chorus".
+      if (shortEnough && /\b(?:papunta(?:ng)?|papasok|pasok|tuloy|punta|lipat|sunod)\b/i.test(t) && /\b(?:verse|chorus|bridge|intro|outro|instrumental|interlude|tag)\b/i.test(t)) return true;
+
+      // Uppercase alone is NOT enough to make a line a cue. This prevents real
+      // titles such as `ONLY JESUS` from being swallowed as dynamic instructions.
+      // Uppercase cues are still caught by the explicit cue patterns above, or when
+      // an instrument/performance signal is present.
+      if (/[A-Z]{3,}/.test(t) && instruments.test(t)) return true;
+
+      // Exclamation-heavy performance notes are usually cues, not lyrics.
+      if (/!{2,}/.test(t) && (instruments.test(t) || actions.test(t))) return true;
+
+      return false;
     }
 
     function normalizeSectionHeader(line) {
       const t = normalizePastedLine(line);
       if (!t) return null;
-      const m = t.match(/^\[?((?:Alt\s+)?(?:Prelude|Verse|Chorus|Pre[-\s]?Chorus|Half[-\s]?Chorus|Post[-\s]?Chorus|Refrain|Bridge|Pre[-\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)(?:\s*[0-9]+)?)(?:\s*[:\-]\s*)?\]?$/i);
-      if (!m) return null;
-      return `[${m[1].replace(/\s+/g, ' ').trim()}]`;
+
+      // Preferred form: [Verse 1], [Chorus], [V1], [weird structure], etc.
+      if (SECTION_RE.test(t)) {
+        const inner = t.slice(1, -1).trim().replace(/\s+/g, ' ');
+        if (!inner) return null;
+
+        // Do not mistake bracketed chord markup like [G] or [C(add9) D/F#]
+        // for a song structure.
+        const parts = inner.split(/\s+/).filter(Boolean);
+        if (parts.length && parts.every(p => isChordToken(p) || isRepeatCountToken(p))) return null;
+        return `[${inner}]`;
+      }
+
+      // Many worship charts arrive as "Verse 1:", "Chorus", "V1", "BR2",
+      // etc. They are still structures. Normalize them into the required
+      // bracketed form so the rest of the formatter has one consistent format.
+      // Single-letter chord names such as A, B, C, D, E, F, G are intentionally
+      // NOT treated as structures.
+      if (t.length > 48 || /[.!?,;]$/.test(t)) return null;
+
+      // Avoid the normal isChordLine()/isBandCue() wrappers here because they
+      // intentionally ask whether a line is a section, which would recurse back
+      // into this function. Check for an all-chord line directly instead.
+      const tokens=t.split(/\s+/).filter(Boolean);
+      if (tokens.length && tokens.every(p => isChordToken(p) || isRepeatCountToken(p))) return null;
+
+      // Unbracketed structures must look like a structure by themselves.
+      // Do NOT match a structure word buried inside a normal instruction like
+      // "papuntang chorus".
+      const structuralWhole = /^(?:alt\s+)?(?:verse|chorus|pre\s*[- ]?(?:chorus|cho)|half\s*[- ]?chorus|post\s*[- ]?chorus|refrain|bridge|pre\s*[- ]?bridge|intro|outro|tag|instrumental|interlude|turnaround|adlib|ad\s*lib|ending|vamp|breakdown|hook|reprise|coda|prelude|solo|section|part|opening|closing|response|response\s*verse)(?:\s*(?:[0-9]+|[0-9]+x|x[0-9]+))?(?:\s*[:\-])?$/i;
+      const compactCode = /^(?:v|vs|vr|verse|c|ch|chor|pc|pch|pre\s*[- ]?(?:chorus|cho)|b|br|bridge|i|in|intro|o|out|t|tag|p|prelude|inst|ad|adlib|vb|cb|bb)(?:\s*[-_.:/]?\s*(?:[0-9]+|[0-9]+x|x[0-9]+))?(?:\s*[-_.:/]?\s*[a-z])?$/i;
+
+      if (structuralWhole.test(t) || compactCode.test(t)) return `[${t.replace(/\s+/g, ' ').replace(/\s*[:\-]\s*$/,'').trim()}]`;
+      return null;
     }
 
     function isSectionHeader(line) { return !!normalizeSectionHeader(line); }
@@ -859,7 +931,15 @@
       let t = normalizePastedLine(token);
       t = t.replace(/^\|+|\|+$/g, '');
       t = t.replace(/(?:ll|l|\(\s*(?:x|×)?\d+\s*(?:x|×)?\s*\))+$/i, '');
+      // Website/source charts sometimes leave punctuation after a chord, e.g. A...
+      // or D,. Treat the punctuation as decoration, not as part of the chord.
+      t = t.replace(/[.,!?;:…]+$/g, '');
       return t;
+    }
+
+    function isChordDecorationToken(token) {
+      const t = normalizePastedLine(token);
+      return /^[.,!?;:…]+$/.test(t);
     }
 
     function isChordToken(token) {
@@ -894,10 +974,10 @@
       if (!t || isSectionHeader(t) || isBandCue(t) || isRepeatDirective(t) || parseMetadataLine(t)) return false;
       const tokens = t.split(/\s+/).filter(Boolean);
       if (!tokens.length) return false;
-      const valid = tokens.filter(token => isChordToken(token) || isRepeatCountToken(token)).length;
+      const valid = tokens.filter(token => isChordToken(token) || isRepeatCountToken(token) || isChordDecorationToken(token)).length;
       const hasChord = tokens.some(isChordToken);
-      // A repeat marker belongs to the chord progression, but a marker by itself
-      // is not a chord line.
+      // Source charts sometimes separate chord punctuation with a space: `A ...`.
+      // Decoration-only tokens are allowed, but they can never make a line a chord row by themselves.
       return hasChord && valid === tokens.length;
     }
 
@@ -905,12 +985,27 @@
       // Normalize spacing between chord tokens to exactly one space, but keep
       // standalone slash markers (used for held beats) readable as separate tokens.
       // Slash chords such as Bb/D and full-chord notation such as G/Em stay intact.
-      return normalizePastedLine(line)
+      const normalized = normalizePastedLine(line)
         .replace(/\|\s*/g, '| ')
         .replace(/\s+\|/g, ' |')
         .replace(/\s*---?\s*/g, '-')
         .replace(/[ \t]+/g, ' ')
         .trim();
+      // A chord can have trailing source punctuation, e.g. A... or A!!.
+      // Since this function is only used after isChordLine() succeeds, it is safe
+      // to remove that decoration here and leave the chord itself intact.
+      return normalized.split(/\s+/).map(token => {
+        if (isChordDecorationToken(token)) return '';
+        const cleaned = cleanChordToken(token);
+        if (/^[A-Ga-g](?:b|#)?(?:[^/]*)$/.test(cleaned)) {
+          return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        }
+        if (/^([A-Ga-g](?:b|#)?)(\/)([A-Ga-g](?:b|#)?)(.*)$/.test(cleaned)) {
+          const m = cleaned.match(/^([A-Ga-g](?:b|#)?)(\/)([A-Ga-g](?:b|#)?)(.*)$/);
+          return m[1].charAt(0).toUpperCase() + m[1].slice(1) + '/' + m[3].charAt(0).toUpperCase() + m[3].slice(1) + m[4];
+        }
+        return cleaned;
+      }).filter(Boolean).join(' ');
     }
 
     function extractInlineChords(line) {
@@ -963,10 +1058,13 @@
           if (sec) atoms.push({marker:'section', text:sec});
           else if (isBandCue(work)) atoms.push({marker:'cue', text:work});
           else {
-            const combo = work.match(/^\[?((?:Alt\s+)?(?:Prelude|Verse|Chorus|Pre[-\s]?Chorus|Half[-\s]?Chorus|Post[-\s]?Chorus|Refrain|Bridge|Pre[-\s]?Bridge|Intro|Outro|Tag|Instrumental|Interlude|Turnaround|Adlib|Ending|Vamp|Breakdown|Hook|Reprise|Coda|MEDLEY)(?:\s*[0-9]+)?)[\]:-]\s+(.+)$/i);
+            const combo = work.match(/^\[([^\]]+)\](?:\s*[:\-]\s*|\s+)(.+)$/);
             if (combo) {
-              atoms.push({marker:'section', text:`[${combo[1].replace(/\s+/g,' ').trim()}]`});
-              work = combo[2].trim();
+              const sec = normalizeSectionHeader(`[${combo[1].trim()}]`);
+              if (sec) {
+                atoms.push({marker:'section', text:sec});
+                work = combo[2].trim();
+              }
             }
             const inline = extractInlineChords(work);
             if (inline && inline.lyric) atoms.push({type:'pair', chords:inline.chords, lyric:inline.lyric});
@@ -1274,33 +1372,101 @@
 
     function isLikelySongTitle(line) {
       const t=normalizePastedLine(line);
-      return !!t && !parseMetadataLine(t) && !isSectionHeader(t) && !isChordLine(t) && !isBandCue(t) && !isRepeatDirective(t)
-        && !/^(?:song|song title|title|artist|album|tempo|tuning|lyrics?|chords?)\s*:?$/i.test(t);
+      if(!t) return false;
+      if(parseMetadataLine(t) || isSectionHeader(t) || isChordLine(t) || isBandCue(t) || isRepeatDirective(t)) return false;
+      if(/^(?:song|song title|title|artist|album|tempo|tuning|lyrics?|chords?)\s*:?$/i.test(t)) return false;
+      if(/^(?:artist|album|writer|author|source|publisher|copyright|tempo|tuning|capo|key|bpm)\s*:/i.test(t)) return false;
+      // A song title/header should look like a standalone title, not a lyric sentence.
+      // This still allows real titles such as "Only Jesus".
+      if(t.length>100) return false;
+      if(/[.!?]$/.test(t) && !/^['"“”‘’]/.test(t)) return false;
+      return true;
+    }
+
+    function isHeaderSupportLine(line) {
+      const t=normalizePastedLine(line);
+      if(!t) return true;
+      return /^(?:artist|album|writer|author|source|publisher|copyright|tempo|tuning|capo|copyright\s*year)\s*:/i.test(t)
+        || /^(?:originally|by|written\s+by)\b/i.test(t);
+    }
+
+    function hasTitleBoundary(lines, titleIndex) {
+      // A real song title should begin a header block: normally it is the first
+      // line or follows a blank line. This prevents the parser from stealing the
+      // last lyric of the previous song when it searches backwards for metadata.
+      return titleIndex===0 || !normalizePastedLine(lines[titleIndex-1]);
+    }
+
+    function findSongTitleBeforeMetadata(nonEmpty, firstMetaIndex, lines) {
+      // Only search the small header block immediately before BPM/Key. Do not scan
+      // arbitrary lyric lines from the previous song. The title itself must begin
+      // a song block, and anything between it and BPM/Key must be header-support text.
+      const start=Math.max(0, firstMetaIndex-4);
+      for(let k=firstMetaIndex-1; k>=start; k--){
+        const candidate=nonEmpty[k]?.c || '';
+        if(!isLikelySongTitle(candidate)) {
+          if(!isHeaderSupportLine(candidate)) break;
+          continue;
+        }
+
+        let supports=true;
+        for(let j=k+1;j<firstMetaIndex;j++){
+          if(!isHeaderSupportLine(nonEmpty[j]?.c || '')) { supports=false; break; }
+        }
+        if(!supports) continue;
+        if(!hasTitleBoundary(lines, nonEmpty[k].i)) continue;
+        return { title:candidate, titleIndex:nonEmpty[k].i };
+      }
+      return null;
+    }
+
+    function detectSongHeaders(raw){
+      const lines=String(raw||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').split('\n');
+      const nonEmpty=[];
+      lines.forEach((l,i)=>{ const c=normalizePastedLine(l); if(c) nonEmpty.push({i,c}); });
+      const headers=[];
+
+      for(let n=0;n<nonEmpty.length;n++){
+        const meta1=parseMetadataLine(nonEmpty[n].c);
+        if(!meta1) continue;
+
+        let meta2=null,j2=-1;
+        for(let j=n+1;j<nonEmpty.length && j<=n+3;j++){
+          const m=parseMetadataLine(nonEmpty[j].c);
+          if(m && m.type!==meta1.type){ meta2=m; j2=j; break; }
+        }
+        if(!meta2) continue;
+
+        const titleInfo=findSongTitleBeforeMetadata(nonEmpty,n,lines);
+        if(!titleInfo) continue;
+
+        const bpm=meta1.type==='bpm'?meta1.value:meta2.type==='bpm'?meta2.value:'';
+        const key=meta1.type==='key'?meta1.value:meta2.type==='key'?meta2.value:'';
+        const metaEnd=Math.max(nonEmpty[n].i,nonEmpty[j2].i);
+
+        if(!headers.some(h=>h.titleIndex===titleInfo.titleIndex)){
+          headers.push({title:titleInfo.title,titleIndex:titleInfo.titleIndex,metaEnd,bpm,key});
+        }
+      }
+
+      headers.sort((a,b)=>a.titleIndex-b.titleIndex);
+      return {lines,headers};
     }
 
     function parseSongDocument(raw) {
-      const lines=String(raw||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').split('\n');
-      const headers=[];
-      const nonEmpty=[];
-      lines.forEach((l,i)=>{ const c=normalizePastedLine(l); if(c) nonEmpty.push({i,c}); });
-      for(let n=0;n<nonEmpty.length;n++) {
-        const meta1=parseMetadataLine(nonEmpty[n].c); if(!meta1) continue;
-        let meta2=null,j2=-1;
-        for(let j=n+1;j<nonEmpty.length && j<=n+2;j++) { const m=parseMetadataLine(nonEmpty[j].c); if(m && m.type!==meta1.type){meta2=m;j2=j;break;} }
-        if(!meta2) continue;
-        const ti=n-1; if(ti<0 || !isLikelySongTitle(nonEmpty[ti].c)) continue;
-        const bpm=meta1.type==='bpm'?meta1.value:meta2.type==='bpm'?meta2.value:'';
-        const key=meta1.type==='key'?meta1.value:meta2.type==='key'?meta2.value:'';
-        const metaStart=Math.min(nonEmpty[n].i,nonEmpty[j2].i); const metaEnd=Math.max(nonEmpty[n].i,nonEmpty[j2].i);
-        if(!headers.some(h=>h.titleIndex===nonEmpty[ti].i)) headers.push({title:nonEmpty[ti].c,titleIndex:nonEmpty[ti].i,metaEnd,bpm,key});
-      }
+      const parsed=detectSongHeaders(raw);
+      const lines=parsed.lines, headers=parsed.headers;
       if(!headers.length) return [{title:'',bpm:'',key:'',body:lines.slice()}];
-      const songs=[];
-      for(let i=0;i<headers.length;i++) {
-        const h=headers[i], next=headers[i+1];
-        songs.push({title:h.title,bpm:h.bpm,key:h.key,body:lines.slice(h.metaEnd+1,next?next.titleIndex:lines.length)});
-      }
-      return songs;
+
+      return headers.map((h,i)=>{
+        const next=headers[i+1];
+        return {
+          title:h.title,
+          bpm:h.bpm,
+          key:h.key,
+          body:lines.slice(h.metaEnd+1,next?next.titleIndex:lines.length)
+        };
+      });
     }
 
     function getMinimumLyricChars(){ const n=Number(document.getElementById('minLyricChars')?.value); return Number.isFinite(n)&&n>0?Math.round(n):15; }
@@ -1349,7 +1515,9 @@
     }
 
     function transposeChord(chord, semitones, preferFlats) {
-      let value = normalizePastedLine(chord);
+      // Normalize chord-only punctuation such as A... before transposing so the
+      // chord remains a clean chord after a key change.
+      let value = cleanChordToken(normalizePastedLine(chord));
       if (!value) return value;
       if (/^[|]+$/.test(value)) return value;
 
@@ -1387,7 +1555,7 @@
       let chordish=0, meaningful=0;
       for(const token of tokens){
         const cleaned=cleanChordToken(token);
-        if(!cleaned || /^[|\/]+$/.test(cleaned)) continue;
+        if(!cleaned || isChordDecorationToken(token) || /^[|\/]+$/.test(cleaned)) continue;
         meaningful++;
         if(isChordToken(token)) chordish++;
       }
@@ -1534,7 +1702,7 @@
         const t=normalizePastedLine(line);
         if(!t){ html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;height:11pt;">&nbsp;</p>`; continue; }
         if(isBandCue(t)) html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;"><span style="background-color:#00ff00;font-weight:bold;color:#000;">${escapeHtml(t)}</span></p>`;
-        else if(isSectionHeader(t)) html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;"><span style="background-color:#ffff00;font-weight:bold;color:#000;">${escapeHtml(t)}</span></p>`;
+        else if(isSectionHeader(t)) html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;"><span style="background-color:#d47f98;font-weight:bold;color:#000;">${escapeHtml(t)}</span></p>`;
         else if(isChordLine(t)) html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;"><span style="background-color:#ffff00;font-weight:bold;color:#000;">${escapeHtml(normalizeChordLine(t))}</span></p>`;
         else html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;"><span style="color:#000;">${escapeHtml(t)}</span></p>`;
       }
@@ -1727,23 +1895,21 @@
     function canonicalSongText(song){ const a=[]; if(song.title)a.push(song.title); if(song.bpm)a.push(`Bpm: ${song.bpm}`); if(song.key)a.push(`Key of ${song.key}`); if(song.title||song.bpm||song.key) a.push(''); if(song.body?.length)a.push(...song.body); return a.join('\n').trim(); }
 
     function parseSongDocumentWithRanges(raw){
-      const lines=String(raw||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').split('\n');
-      const nonEmpty=[];
-      lines.forEach((l,i)=>{ const c=normalizePastedLine(l); if(c) nonEmpty.push({i,c}); });
-      const headers=[];
-      for(let n=0;n<nonEmpty.length;n++){
-        const meta1=parseMetadataLine(nonEmpty[n].c); if(!meta1) continue;
-        let meta2=null,j2=-1;
-        for(let j=n+1;j<nonEmpty.length && j<=n+2;j++){ const m=parseMetadataLine(nonEmpty[j].c); if(m && m.type!==meta1.type){meta2=m;j2=j;break;} }
-        if(!meta2) continue;
-        const ti=n-1; if(ti<0 || !isLikelySongTitle(nonEmpty[ti].c)) continue;
-        const bpm=meta1.type==='bpm'?meta1.value:meta2.type==='bpm'?meta2.value:'';
-        const key=meta1.type==='key'?meta1.value:meta2.type==='key'?meta2.value:'';
-        const metaEnd=Math.max(nonEmpty[n].i,nonEmpty[j2].i);
-        if(!headers.some(h=>h.titleIndex===nonEmpty[ti].i)) headers.push({title:nonEmpty[ti].c,titleIndex:nonEmpty[ti].i,metaEnd,bpm,key});
-      }
+      const parsed=detectSongHeaders(raw);
+      const lines=parsed.lines, headers=parsed.headers;
       if(!headers.length) return [{title:'',bpm:'',key:'',body:lines.slice(),startLine:0,endLine:lines.length}];
-      return headers.map((h,i)=>{ const next=headers[i+1]; return {title:h.title,bpm:h.bpm,key:h.key,body:lines.slice(h.metaEnd+1,next?next.titleIndex:lines.length),startLine:h.titleIndex,endLine:next?next.titleIndex:lines.length}; });
+
+      return headers.map((h,i)=>{
+        const next=headers[i+1];
+        return {
+          title:h.title,
+          bpm:h.bpm,
+          key:h.key,
+          body:lines.slice(h.metaEnd+1,next?next.titleIndex:lines.length),
+          startLine:h.titleIndex,
+          endLine:next?next.titleIndex:lines.length
+        };
+      });
     }
 
     function refreshSongSelector(){
