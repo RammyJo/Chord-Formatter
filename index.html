@@ -20,6 +20,7 @@
       --accent-cyan: #00ffff;
       --accent-yellow: #ffff00;
       --accent-pink: #d47f98;
+      --accent-structure: #ffd86b;
       --accent-green: #00ff00;
     }
 
@@ -623,6 +624,7 @@
     --champions-red: #007FFF;
     --church-azure-soft: #9fd3ff;
     --accent-pink: #d47f98;
+    --accent-structure: #ffd86b;
   }
 
   html {
@@ -910,8 +912,8 @@
             <span>Yellow: Chords</span>
           </div>
           <div class="legend-item">
-            <div class="legend-color" style="background: #d47f98;"></div>
-            <span>Pink: Song Structure</span>
+            <div class="legend-color" style="background: #ffd86b;"></div>
+            <span>Gold Yellow: Song Structure</span>
           </div>
           <div class="legend-item">
             <div class="legend-color" style="background: #00ff00;"></div>
@@ -977,7 +979,7 @@
         </div>
         <div id="chordCheckerStatus" class="status-text">No check run yet.</div>
         <div id="chordCheckerResults" class="chord-checker-results"></div>
-        <div class="tool-help">Tracks chord-looking entries that do not match the formatter's chord rules. Nothing is auto-corrected.</div>
+        <div class="tool-help">Checks for chord typos and possible key/quality mismatches. Non-diatonic chords may be intentional. Nothing is auto-corrected.</div>
       </div>
     </div>
   </div>
@@ -1926,7 +1928,7 @@
         const t=normalizePastedLine(line);
         if(!t){ html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;height:11pt;">&nbsp;</p>`; continue; }
         if(isBandCue(t)) html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;"><span style="background-color:#00ff00;font-weight:bold;color:#000;">${escapeHtml(t)}</span></p>`;
-        else if(isSectionHeader(t)) html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;"><span style="background-color:#d47f98;font-weight:bold;color:#000;">${escapeHtml(t)}</span></p>`;
+        else if(isSectionHeader(t)) html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;"><span style="background-color:#ffd86b;font-weight:bold;color:#000;">${escapeHtml(t)}</span></p>`;
         else if(isChordLine(t)) html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;"><span style="background-color:#ffff00;font-weight:bold;color:#000;">${escapeHtml(normalizeChordLine(t))}</span></p>`;
         else html+=`<p style="margin:0;padding:0;line-height:1.15;font-family:Arial,sans-serif;font-size:11pt;"><span style="color:#000;">${escapeHtml(t)}</span></p>`;
       }
@@ -2038,14 +2040,88 @@
 
     function chordCheckerCandidate(token){
       let t=cleanChordToken(token);
-      if(!t || isRepeatCountToken(t)) return false;
+      if(!t || isRepeatCountToken(t) || isChordDecorationToken(t)) return false;
       if(/^\(.*\)$/.test(t)) t=t.slice(1,-1).trim();
       const m=t.match(/^([A-Ga-g](?:b|#)?)(.*)$/);
       if(!m) return false;
       const rest=m[2];
-      // Catch likely chord typos such as Cmja7, Cadd, C//G, C#9, etc.,
-      // while avoiding ordinary lyric words such as "Amazing".
+      // Syntax problems: chord-looking text that is close to a chord but fails the
+      // formatter's actual chord grammar.
       return /[0-9#b()\/+-]/.test(rest) || /^(?:m|maj|min|sus|dim|aug|add|no)/i.test(rest);
+    }
+
+    function chordCheckerRoot(token){
+      let t=cleanChordToken(token);
+      if(/^\(.*\)$/.test(t)) t=t.slice(1,-1).trim();
+      const slash=t.split('/')[0];
+      const m=slash.match(/^([A-Ga-g](?:b|#)?)/);
+      if(!m) return null;
+      const note=normalizeKeyName(m[1]);
+      const semi=noteToSemitone[note];
+      return semi===undefined?null:{name:note,semitone:semi};
+    }
+
+    function chordCheckerFamily(token){
+      let t=cleanChordToken(token);
+      if(/^\(.*\)$/.test(t)) t=t.slice(1,-1).trim();
+      const m=t.match(/^([A-Ga-g](?:b|#)?)(.*)$/);
+      if(!m) return 'unknown';
+      const rest=m[2].split('/')[0].toLowerCase();
+      if(/dim|°/.test(rest)) return 'dim';
+      if(/aug/.test(rest) || /\+/.test(rest)) return 'aug';
+      if(/(?:^|[^a-z])min/.test(rest) || /^m(?:$|[0-9(])/.test(rest)) return 'minor';
+      if(/sus/.test(rest)) return 'major';
+      if(/maj/.test(rest)) return 'major';
+      // add, no, 5, 6, 7, 9, etc. without an explicit minor/dim/aug quality
+      // are treated as major-family for compatibility with common worship charts.
+      return 'major';
+    }
+
+    function chordCheckerKeyProfile(keyName){
+      const k=normalizePastedLine(keyName||'');
+      const minor=/m(?:in)?$/i.test(k);
+      const rootText=minor?k.replace(/m(?:in)?$/i,''):k;
+      const root=chordCheckerRoot(rootText);
+      if(!root) return null;
+      const intervals=minor?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];
+      const families=minor?['minor','dim','major','minor','minor','major','major']:
+        ['major','minor','minor','major','major','minor','dim'];
+      const names=minor?['i','ii°','III','iv','v','VI','VII']:['I','ii','iii','IV','V','vi','vii°'];
+      const scale=new Map();
+      intervals.forEach((interval,i)=>scale.set((root.semitone+interval)%12,{family:families[i],degree:names[i],interval}));
+      return {key:root.name+(minor?'m':''),root:root.semitone,minor,scale};
+    }
+
+    function chordCheckerExpected(profile, rootSemitone){
+      if(!profile) return null;
+      const hit=profile.scale.get(rootSemitone);
+      return hit || null;
+    }
+
+    function chordCheckerReason(token, profile){
+      const root=chordCheckerRoot(token);
+      if(!root || !profile) return null;
+      const expected=chordCheckerExpected(profile,root.semitone);
+      const actual=chordCheckerFamily(token);
+
+      if(!expected){
+        return `Possible non-diatonic chord: ${root.name} is outside ${profile.key}. This may be intentional (borrowed/secondary chord), but it is worth checking.`;
+      }
+
+      // Power/neutral spellings and suspended/add chords are deliberately permissive.
+      if(actual==='major' && expected.family==='minor'){
+        return `Possible chord mismatch: ${root.name} is ${expected.degree} in ${profile.key}, so a minor-family chord would normally be expected here.`;
+      }
+      if(actual==='minor' && expected.family==='major'){
+        return `Possible chord mismatch: ${root.name} is ${expected.degree} in ${profile.key}, so a major-family chord would normally be expected here.`;
+      }
+      if(actual==='dim' && expected.family!=='dim'){
+        return `Possible chord mismatch: ${root.name} is ${expected.degree} in ${profile.key}, but this is a diminished chord.`;
+      }
+      if(actual==='aug'){
+        return `Possible unusual chord quality: ${root.name} is augmented in ${profile.key}.`;
+      }
+      return null;
     }
 
     function refreshChordChecker(showToastMessage=false){
@@ -2057,41 +2133,69 @@
       const issues=[];
       const lines=raw.split('\n');
 
+      // Prefer the declared chart key. If there is none, use the formatter's key inference.
+      let declaredKey='';
+      for(const rawLine of lines){
+        const meta=parseMetadataLine(rawLine);
+        if(meta && meta.type==='key'){ declaredKey=meta.value; break; }
+      }
+      const inferredKey=declaredKey || inferChordKey(raw);
+      const profile=chordCheckerKeyProfile(inferredKey);
+
       lines.forEach((rawLine,index)=>{
         const line=normalizePastedLine(rawLine);
         if(!line || isSectionHeader(line) || isBandCue(line) || isRepeatDirective(line) || parseMetadataLine(line)) return;
         const tokens=line.split(/\s+/).filter(Boolean);
-        const chordCount=tokens.filter(isChordToken).length;
-        const suspicious=tokens.filter(chordCheckerCandidate).filter(token=>!isChordToken(token));
+        const chordTokens=tokens.filter(isChordToken);
+        const syntaxProblems=tokens.filter(chordCheckerCandidate).filter(token=>!isChordToken(token));
 
-        if(suspicious.length && chordCount>0){
+        if(syntaxProblems.length && chordTokens.length>0){
           issues.push({
             line:index+1,
-            tokens:suspicious,
             text:line,
-            reason:'This line contains chord-looking text that the formatter does not recognize as a valid chord.'
+            severity:'syntax',
+            reason:`Possible chord typo: ${syntaxProblems.join(', ')} does not match the formatter's chord rules.`
           });
-        } else if(suspicious.length>=2 && tokens.length<=6){
-          issues.push({
-            line:index+1,
-            tokens:suspicious,
-            text:line,
-            reason:"Several entries look like chord symbols but do not match the formatter's chord rules."
-          });
+        }
+
+        if(profile && chordTokens.length){
+          const musicalProblems=[];
+          for(const token of chordTokens){
+            const reason=chordCheckerReason(token,profile);
+            if(reason) musicalProblems.push(`${token}: ${reason}`);
+          }
+          if(musicalProblems.length){
+            issues.push({
+              line:index+1,
+              text:line,
+              severity:'music',
+              reason:musicalProblems.join(' ')
+            });
+          }
         }
       });
 
-      if(!issues.length){
-        status.textContent='No obvious chord issues found.';
+      // De-duplicate issues for a line when the same token produced multiple messages.
+      const unique=[];
+      const seen=new Set();
+      for(const issue of issues){
+        const key=`${issue.line}|${issue.reason}`;
+        if(!seen.has(key)){seen.add(key);unique.push(issue);}
+      }
+
+      if(!unique.length){
+        status.textContent=profile
+          ? `No obvious chord issues found${inferredKey?` in ${escapeHtml(inferredKey)}`:''}.`
+          : 'No obvious chord issues found. Add a Key line for musical consistency checking.';
         status.style.color='var(--text-muted)';
         results.innerHTML='';
         if(showToastMessage) showToast('Chord check complete: no obvious issues found.');
         return;
       }
 
-      status.textContent=`${issues.length} possible chord issue${issues.length===1?'':'s'} found. Nothing was changed.`;
+      status.textContent=`${unique.length} possible chord issue${unique.length===1?'':'s'} found. Nothing was changed.`;
       status.style.color='#fca5a5';
-      results.innerHTML=issues.map(issue=>`<div class="chord-issue" data-line="${issue.line}" title="Click to select this line in the editor">
+      results.innerHTML=unique.map(issue=>`<div class="chord-issue" data-line="${issue.line}" title="Click to select this line in the editor">
         <strong>Line ${issue.line}</strong> · ${escapeHtml(issue.reason)}<br>
         <code>${escapeHtml(issue.text)}</code>
       </div>`).join('');
@@ -2103,7 +2207,7 @@
         ta.focus();
         ta.setSelectionRange(start,start+all[targetLine-1].length);
       }));
-      if(showToastMessage) showToast(`Chord check: ${issues.length} possible issue${issues.length===1?'':'s'} found.`);
+      if(showToastMessage) showToast(`Chord check: ${unique.length} possible issue${unique.length===1?'':'s'} found.`);
     }
 
     function showToast(message='Copied to Clipboard! Ready to paste directly into Google Docs.'){ const t=document.getElementById('toast'); t.textContent=message; t.style.display='block'; clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>t.style.display='none',3000); }
