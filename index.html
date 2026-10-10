@@ -13,10 +13,8 @@
       --border-strong: #454545;
       --text: #ffffff;
       --text-muted: #c8c8c8;
-      --primary: #202020;
-      --primary-hover: #333333;
-      --champions-blue: #000000;
-      --champions-red: #007FFF;
+      --primary: #007FFF;
+      --primary-hover: #3399FF;
       --accent-cyan: #00ffff;
       --accent-yellow: #ffff00;
       --accent-pink: #d47f98;
@@ -48,7 +46,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 2px solid var(--champions-red);
+      border-bottom: 2px solid var(--primary);
       padding-bottom: 16px;
     }
 
@@ -61,7 +59,7 @@
     }
 
     .badge {
-      background: var(--champions-red);
+      background: var(--primary);
       color: white;
       font-size: 12px;
       padding: 3px 8px;
@@ -99,8 +97,8 @@
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: var(--champions-red);
-      box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.16);
+      background: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 127, 255, 0.20);
     }
 
     .layout {
@@ -177,6 +175,26 @@
     .chord-issue:hover {
       background: #181818;
     }
+
+    .chord-issue-action {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #343434;
+    }
+    .chord-issue-action button {
+      padding: 6px 10px;
+      font-size: 12px;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 8px;
+    }
+    .chord-issue-action button:hover { background: var(--primary-hover); }
+
 
     .chord-issue strong {
       color: #fff;
@@ -397,11 +415,12 @@
     }
 
     button.primary {
-      background: #1c1c1c;
+      background: var(--primary);
+      color: #ffffff;
     }
 
     button.primary:hover {
-      background: #2b2b2b;
+      background: var(--primary-hover);
     }
 
     button.success {
@@ -619,9 +638,8 @@
     --border-strong: #3a3a40;
     --text: #f7f7f8;
     --text-muted: #b9b9c0;
-    --primary: #29292e;
-    --primary-hover: #35353c;
-    --champions-red: #007FFF;
+    --primary: #007FFF;
+    --primary-hover: #3399FF;
     --church-azure-soft: #9fd3ff;
     --accent-pink: #d47f98;
     --accent-structure: #ffd86b;
@@ -849,6 +867,17 @@
     .card { border-radius: 14px; padding: 14px; }
     .preview-box { padding: 22px 18px; }
     button { min-height: 42px; }
+    /* Keep each tool card full-width on narrow screens. */
+    .tools-layout { grid-template-columns: minmax(0, 1fr); }
+    .tools-card, .isolation-grid { min-width: 0; }
+    .isolation-grid #songSelector {
+      flex: 1 1 100%;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+    .isolation-grid #isolatedKey,
+    .isolation-grid input.small-number { min-width: 0; max-width: 100%; }
   }
 </style>
 </head>
@@ -962,7 +991,7 @@
           <button type="button" onclick="isolateSelectedSong()">Isolate</button>
           <select id="isolatedKey" onchange="applyIsolatedKey(this.value)" aria-label="Change isolated song key">
             <option value="">Set key</option>
-            <option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+            <option>C</option><option>C#</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option><option>Am</option><option>Bbm</option><option>Bm</option><option>Cm</option><option>C#m</option><option>Dm</option><option>Ebm</option><option>Em</option><option>Fm</option><option>F#m</option><option>Gm</option><option>Abm</option>
           </select>
           <input id="isolatedBpm" class="small-number" type="number" min="1" max="300" step="1" placeholder="BPM" aria-label="Edit isolated song BPM" oninput="applyIsolatedBpm(this.value)">
           <button type="button" onclick="applyIsolatedSong()">Save to Set</button>
@@ -979,7 +1008,7 @@
         </div>
         <div id="chordCheckerStatus" class="status-text">No check run yet.</div>
         <div id="chordCheckerResults" class="chord-checker-results"></div>
-        <div class="tool-help">Checks for chord typos and possible key/quality mismatches. Non-diatonic chords may be intentional. Nothing is auto-corrected.</div>
+        <div class="tool-help">Checks chord syntax and possible theory mismatches for each song's key. Suggestions are optional; nothing changes until you click Accept Change.</div>
       </div>
     </div>
   </div>
@@ -1015,18 +1044,31 @@
     }
 
     function normalizeKeyName(key) {
-      const k = normalizePastedLine(key);
+      let k = normalizePastedLine(key);
       if (!k) return '';
-      const canonical = k.charAt(0).toUpperCase() + k.slice(1).toLowerCase();
-      return ({'D#':'Eb','G#':'Ab','A#':'Bb'})[canonical] || canonical;
+      k = k.replace(/\s*(?:minor|min)\s*$/i, 'm');
+      const m = k.match(/^([A-G](?:#|b)?)(?:\s*(m|min|minor))?$/i);
+      if (!m) return k;
+      const rawRoot = m[1].charAt(0).toUpperCase() + m[1].slice(1);
+      const root = ({'D#':'Eb','G#':'Ab','A#':'Bb'})[rawRoot] || rawRoot;
+      return root + (m[2] ? 'm' : '');
     }
+
+    function keyRootName(key) {
+      const m = normalizeKeyName(key).match(/^([A-G](?:#|b)?)/i);
+      if (!m) return '';
+      const root = m[1].charAt(0).toUpperCase() + m[1].slice(1);
+      return ({'D#':'Eb','G#':'Ab','A#':'Bb'})[root] || root;
+    }
+
+    function keyIsMinor(key) { return /m$/i.test(normalizeKeyName(key)); }
 
     function parseMetadataLine(line) {
       const clean = normalizePastedLine(line);
       let m = clean.match(/^BPM\s*:?[ ]*(\d+(?:\.\d+)?)$/i);
       if (m) return { type: 'bpm', value: m[1] };
-      m = clean.match(/^Key\s*(?:of\s*)?:?[ ]*([A-G](?:#|b)?)$/i);
-      if (m) return { type: 'key', value: normalizeKeyName(m[1]) };
+      m = clean.match(/^Key\s*(?:of\s*)?:?\s*([A-G](?:#|b)?)(?:\s*(m|min|minor))?$/i);
+      if (m) return { type: 'key', value: normalizeKeyName(m[1] + (m[2] || '')) };
       return null;
     }
 
@@ -1127,12 +1169,15 @@
     function extractRepeatDirectives(line) {
       const text = normalizePastedLine(line);
       if (!text) return { body: '', directives: [] };
-      const re = /\bREPEAT\s+((?:ALT\s+)?(?:VERSE|CHORUS|PRE[-\s]?CHORUS|HALF[-\s]?CHORUS|POST[-\s]?CHORUS|REFRAIN|BRIDGE|PRE[-\s]?BRIDGE|INTRO|OUTRO|TAG|INSTRUMENTAL|INTERLUDE|TURNAROUND|ADLIB|ENDING|VAMP|BREAKDOWN|HOOK|REPRISE|CODA|MEDLEY)(?:\s*\d+)?)(?:\s*(\d+)X)?(?=\s+REPEAT\s+|$)/gi;
+      // Counts may be written as 2x, x2, 2×, or (2x)/(x2).
+      // The count is TOTAL performances, including the original section.
+      const re = /\bREPEAT\s+((?:ALT\s+)?(?:VERSE|CHORUS|PRE[-\s]?CHORUS|HALF[-\s]?CHORUS|POST[-\s]?CHORUS|REFRAIN|BRIDGE|PRE[-\s]?BRIDGE|INTRO|OUTRO|TAG|INSTRUMENTAL|INTERLUDE|TURNAROUND|ADLIB|ENDING|VAMP|BREAKDOWN|HOOK|REPRISE|CODA|MEDLEY)(?:\s*\d+)?)(?:\s*\(?\s*(?:(\d+)\s*[x×]|[x×]\s*(\d+))\s*\)?)?(?=\s+REPEAT\s+|$)/gi;
       const directives = [];
       const spans = [];
       let m;
       while ((m = re.exec(text))) {
-        directives.push({ target: normalizePastedLine(m[1]), count: Math.max(1, Number(m[2] || 1)) });
+        const countText = m[2] || m[3] || '';
+        directives.push({ target: normalizePastedLine(m[1]), count: countText ? Math.max(1, Number(countText)) : 1, explicitCount: !!countText });
         spans.push([m.index, re.lastIndex]);
       }
       if (!directives.length) return { body: text, directives: [] };
@@ -1142,9 +1187,19 @@
     }
 
     function chordBodyValid(s) {
-      // Support normal chords plus common parenthesized extensions, e.g. C(add9).
-      // Chord extensions such as C(add9), C(maj7), etc. remain valid chords.
-      return /^[A-G](?:b|#)?(?:maj|min|m|M|sus[24]?|dim|aug|add[0-9]+|[0-9]+|no[357]|\+|-|\((?:maj|min|m|sus[24]?|dim|aug|add)?[0-9]+\))*$/.test(s);
+      const t = String(s || '').trim();
+      const m = t.match(/^([A-G](?:b|#)?)(.*)$/i);
+      if (!m) return false;
+      const suffix = m[2].toLowerCase();
+      if (!suffix) return true;
+      // Explicit triad qualities, with common extensions.
+      if (/^(?:m|min|maj|dim|aug)(?:[2-9]|1[0-3])?$/.test(suffix)) return true;
+      // Common neutral/extension forms used in worship charts.
+      if (/^(?:sus[24]?|add\d+|no[357]|[2-9]|1[0-3])$/.test(suffix)) return true;
+      if (/^(?:[2-9]|1[0-3])sus[24]?$/.test(suffix)) return true; // e.g. 7sus4
+      if (/^\((?:maj|min|m|dim|aug|sus[24]?|add\d+|\d+|no[357])\)$/.test(suffix)) return true;
+      if (/^(?:m7b5|ø7)$/.test(suffix)) return true; // half-diminished
+      return false;
     }
 
     function isRepeatCountToken(token) {
@@ -1169,9 +1224,22 @@
     }
 
     function isChordToken(token) {
-      if (isRepeatCountToken(token)) return false;
-      if (/^all$/i.test(normalizePastedLine(token))) return false;
-      let t = cleanChordToken(token);
+      const raw = normalizePastedLine(token);
+      if (isRepeatCountToken(raw)) return false;
+      if (/^all$/i.test(raw)) return false;
+
+      // A pipe is a bar separator, not part of a chord name. Validate each
+      // non-empty chord on either side so forms like A| and G|Gsus stay musical.
+      if (raw.includes('|')) {
+        let pipeBody = raw;
+        const wrapped = pipeBody.match(/^\((.*)\)$/);
+        if (wrapped) pipeBody = wrapped[1].trim();
+        const pipeParts = pipeBody.split('|');
+        const hasChordPart = pipeParts.some(part => part.trim());
+        return !hasChordPart || pipeParts.every(part => !part.trim() || isChordToken(part.trim()));
+      }
+
+      let t = cleanChordToken(raw);
       if (!t) return true;
 
       // A chord enclosed in parentheses is still a chord. This also supports
@@ -1198,40 +1266,39 @@
     function isChordLine(line) {
       const t = normalizePastedLine(line);
       if (!t || isSectionHeader(t) || isBandCue(t) || isRepeatDirective(t) || parseMetadataLine(t)) return false;
+      // Treat a whole parenthesized chord/group as one chord row before splitting on spaces.
+      if (/^\(.*\)$/.test(t) && isChordToken(t)) return true;
       const tokens = t.split(/\s+/).filter(Boolean);
       if (!tokens.length) return false;
       const valid = tokens.filter(token => isChordToken(token) || isRepeatCountToken(token) || isChordDecorationToken(token)).length;
       const hasChord = tokens.some(isChordToken);
-      // Source charts sometimes separate chord punctuation with a space: `A ...`.
-      // Decoration-only tokens are allowed, but they can never make a line a chord row by themselves.
       return hasChord && valid === tokens.length;
     }
 
     function normalizeChordLine(line) {
-      // Normalize spacing between chord tokens to exactly one space, but keep
-      // standalone slash markers (used for held beats) readable as separate tokens.
-      // Slash chords such as Bb/D and full-chord notation such as G/Em stay intact.
+      // Normalize chord casing and spacing while preserving bar separators.
+      // Examples: A| -> A|, G|Gsus -> G| Gsus, G | Am -> G| Am.
       const normalized = normalizePastedLine(line)
-        .replace(/\|\s*/g, '| ')
-        .replace(/\s+\|/g, ' |')
         .replace(/\s*---?\s*/g, '-')
         .replace(/[ \t]+/g, ' ')
         .trim();
-      // A chord can have trailing source punctuation, e.g. A... or A!!.
-      // Since this function is only used after isChordLine() succeeds, it is safe
-      // to remove that decoration here and leave the chord itself intact.
-      return normalized.split(/\s+/).map(token => {
+
+      const normalizeToken = token => {
         if (isChordDecorationToken(token)) return '';
         const cleaned = cleanChordToken(token);
-        if (/^[A-Ga-g](?:b|#)?(?:[^/]*)$/.test(cleaned)) {
-          return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-        }
         if (/^([A-Ga-g](?:b|#)?)(\/)([A-Ga-g](?:b|#)?)(.*)$/.test(cleaned)) {
           const m = cleaned.match(/^([A-Ga-g](?:b|#)?)(\/)([A-Ga-g](?:b|#)?)(.*)$/);
           return m[1].charAt(0).toUpperCase() + m[1].slice(1) + '/' + m[3].charAt(0).toUpperCase() + m[3].slice(1) + m[4];
         }
+        if (/^[A-Ga-g](?:b|#)?(?:[^/]*)$/.test(cleaned)) {
+          return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        }
         return cleaned;
-      }).filter(Boolean).join(' ');
+      };
+
+      // Split around each bar, not on the bar itself, so a terminal bar never
+      // gets cleaned away as punctuation.
+      return normalized.split('|').map(segment => segment.trim().split(/\s+/).filter(Boolean).map(normalizeToken).filter(Boolean).join(' ')).join('| ').trim();
     }
 
     function extractInlineChords(line) {
@@ -1298,7 +1365,7 @@
             else if (work) atoms.push({type:'lyric', lyric:cleanLyricFragment(work)});
           }
         }
-        rep.directives.forEach(d=>atoms.push({type:'repeat-request', target:d.target, count:d.count}));
+        rep.directives.forEach(d=>atoms.push({type:'repeat-request', target:d.target, count:d.count, explicitCount:d.explicitCount}));
       }
       return atoms;
     }
@@ -1324,8 +1391,10 @@
       for (const a of atoms) {
         if (a.type!=='repeat-request') { out.push(cloneAtom(a)); continue; }
         const sec=find(a.target);
-        if (!sec) { out.push({marker:'cue',text:`REPEAT ${a.target}${a.count>1?` ${a.count}x`:''}`}); continue; }
-        const copies=Math.max(1,a.count);
+        if (!sec) { out.push({marker:'cue',text:`REPEAT ${a.target}${a.explicitCount?` ${a.count}x`:''}`}); continue; }
+        // Explicit counts describe total performances, including the original section.
+        // `Repeat Chorus 2x` therefore adds one copy; a bare `Repeat Chorus` adds one copy.
+        const copies=a.explicitCount ? Math.max(0,a.count-1) : 1;
         for(let i=0;i<copies;i++) { out.push({marker:'section',text:sec.header}); out.push(...sec.body.map(cloneAtom)); }
       }
       return out;
@@ -1605,7 +1674,6 @@
       // A song title/header should look like a standalone title, not a lyric sentence.
       // This still allows real titles such as "Only Jesus".
       if(t.length>100) return false;
-      if(/[.!?]$/.test(t) && !/^['"“”‘’]/.test(t)) return false;
       return true;
     }
 
@@ -1617,17 +1685,24 @@
     }
 
     function hasTitleBoundary(lines, titleIndex) {
-      // A real song title should begin a header block: normally it is the first
-      // line or follows a blank line. This prevents the parser from stealing the
-      // last lyric of the previous song when it searches backwards for metadata.
-      return titleIndex===0 || !normalizePastedLine(lines[titleIndex-1]);
+      if (titleIndex === 0 || !normalizePastedLine(lines[titleIndex-1])) return true;
+      const candidate = normalizePastedLine(lines[titleIndex]);
+      const previous = normalizePastedLine(lines[titleIndex-1]);
+      if (isSectionHeader(previous) || isChordLine(previous) || isBandCue(previous) || parseMetadataLine(previous)) return true;
+      // If a paste omits the blank separator, only accept a strong title-style line.
+      // Two or more title-cased words (e.g. `Only Jesus!`) or a shout-case title qualify.
+      const words = candidate.match(/[A-Za-z]+/g) || [];
+      const allCaps = /[A-Z]/.test(candidate) && candidate === candidate.toLocaleUpperCase();
+      const minorWords = new Set(['a','an','and','as','at','but','by','for','in','of','on','or','the','to','with','he','his','her','we','our']);
+      const titleCase = words.length >= 2 && words.every(w => minorWords.has(w.toLowerCase()) || /^[A-Z]/.test(w));
+      return allCaps || (titleCase && candidate.length <= 80 && !/[,:;]$/.test(candidate));
     }
 
     function findSongTitleBeforeMetadata(nonEmpty, firstMetaIndex, lines) {
       // Only search the small header block immediately before BPM/Key. Do not scan
       // arbitrary lyric lines from the previous song. The title itself must begin
       // a song block, and anything between it and BPM/Key must be header-support text.
-      const start=Math.max(0, firstMetaIndex-4);
+      const start=Math.max(0, firstMetaIndex-10);
       for(let k=firstMetaIndex-1; k>=start; k--){
         const candidate=nonEmpty[k]?.c || '';
         if(!isLikelySongTitle(candidate)) {
@@ -1671,7 +1746,8 @@
         const metaEnd=Math.max(nonEmpty[n].i,nonEmpty[j2].i);
 
         if(!headers.some(h=>h.titleIndex===titleInfo.titleIndex)){
-          headers.push({title:titleInfo.title,titleIndex:titleInfo.titleIndex,metaEnd,bpm,key});
+          const headerSupportLines = lines.slice(titleInfo.titleIndex+1, metaEnd+1).filter(line => isHeaderSupportLine(line) && normalizePastedLine(line) && !parseMetadataLine(line));
+          headers.push({title:titleInfo.title,titleIndex:titleInfo.titleIndex,metaEnd,bpm,key,headerSupportLines});
         }
       }
 
@@ -1682,17 +1758,22 @@
     function parseSongDocument(raw) {
       const parsed=detectSongHeaders(raw);
       const lines=parsed.lines, headers=parsed.headers;
-      if(!headers.length) return [{title:'',bpm:'',key:'',body:lines.slice()}];
+      if(!headers.length) return [{title:'',bpm:'',key:'',headerSupportLines:[],body:lines.slice(),startLine:0,endLine:lines.length,unassigned:true}];
 
-      return headers.map((h,i)=>{
+      const songs=headers.map((h,i)=>{
         const next=headers[i+1];
         return {
-          title:h.title,
-          bpm:h.bpm,
-          key:h.key,
-          body:lines.slice(h.metaEnd+1,next?next.titleIndex:lines.length)
+          title:h.title, bpm:h.bpm, key:h.key,
+          headerSupportLines:h.headerSupportLines || [],
+          body:lines.slice(h.metaEnd+1,next?next.titleIndex:lines.length),
+          startLine:h.titleIndex, endLine:next?next.titleIndex:lines.length
         };
       });
+      const prefix=lines.slice(0,headers[0].titleIndex);
+      if(prefix.some(line=>normalizePastedLine(line))) {
+        songs.unshift({title:'',bpm:'',key:'',headerSupportLines:[],body:prefix,startLine:0,endLine:headers[0].titleIndex,unassigned:true});
+      }
+      return songs;
     }
 
     function getMinimumLyricChars(){ const n=Number(document.getElementById('minLyricChars')?.value); return Number.isFinite(n)&&n>0?Math.round(n):15; }
@@ -1718,6 +1799,7 @@
       el.value=text;
       updatePreview();
       refreshSongSelector();
+      refreshChordChecker(false);
     }
 
     function applyFormattedSong(raw,showMessage=true){
@@ -1741,9 +1823,21 @@
     }
 
     function transposeChord(chord, semitones, preferFlats) {
+      // Pipes separate chords/bars; transpose every chord segment but keep the bars.
+      const rawValue = normalizePastedLine(chord);
+      if (!rawValue) return rawValue;
+      if (rawValue.includes('|')) {
+        const wrapped = rawValue.match(/^\((.*)\)$/);
+        if (wrapped) {
+          const inside = wrapped[1];
+          return `(${inside.split('|').map(part => part.trim() ? transposeChord(part.trim(), semitones, preferFlats) : '').join('| ').trim()})`;
+        }
+        return rawValue.split('|').map(part => part.trim() ? transposeChord(part.trim(), semitones, preferFlats) : '').join('| ').trim();
+      }
+
       // Normalize chord-only punctuation such as A... before transposing so the
       // chord remains a clean chord after a key change.
-      let value = cleanChordToken(normalizePastedLine(chord));
+      let value = cleanChordToken(rawValue);
       if (!value) return value;
       if (/^[|]+$/.test(value)) return value;
 
@@ -1807,8 +1901,19 @@
     function transposeChordRowsInLine(line,semitones,preferFlats){
       const normalized=normalizePastedLine(line);
       if(!normalized) return line;
+      // A full parenthesized chord group must be transposed as a single token.
+      if(/^\(.*\)$/.test(normalized) && isChordToken(normalized)) return transposeChord(normalized,semitones,preferFlats);
+
+      // A structure can share a line with its chord progression and lyrics.
+      const sectionCombo=normalized.match(/^(\[[^\]]+\])(?:\s*[:\-]?\s+)(.+)$/);
+      if(sectionCombo && isSectionHeader(sectionCombo[1])) {
+        const remainder=transposeChordRowsInLine(sectionCombo[2],semitones,preferFlats);
+        return sectionCombo[1]+' '+remainder;
+      }
+
       // Pure chord rows, including bar notation used in Intro/Interlude.
       if(isChordLine(normalized) || isPipeChordLine(normalized)) {
+        if(/^\(.*\)$/.test(normalized)) return transposeChord(normalized,semitones,preferFlats);
         return normalized.split(/(\s+)/).map(part=>/\s+/.test(part)?part:transposeChord(part,semitones,preferFlats)).join('');
       }
 
@@ -1877,23 +1982,32 @@
       return (roots.length >= 4 && confidence >= 2.5) ? bestKey : '';
     }
 
+    function transposeKeyName(keyName, semitones, preferFlats) {
+      const normalized=normalizeKeyName(keyName);
+      const root=keyRootName(normalized);
+      const from=noteToSemitone[root];
+      if(from===undefined) return normalized;
+      const moved=transposeSingleNote(root,semitones,preferFlats);
+      return moved + (keyIsMinor(normalized) ? 'm' : '');
+    }
+
+    function replaceKeyMetadataLine(line, newKey) {
+      return String(line).replace(/^(\s*Key\s*(?:of\s*)?:?\s*)([A-G](?:#|b)?(?:\s*(?:m|min|minor))?)\s*$/i, (whole,prefix) => prefix + normalizeKeyName(newKey));
+    }
+
     function transposeContentFromKeyToTarget(raw, fromKey, targetKey) {
-      const from = noteToSemitone[normalizeKeyName(fromKey)];
-      const to = noteToSemitone[normalizeKeyName(targetKey)];
+      const from = noteToSemitone[keyRootName(fromKey)];
+      const to = noteToSemitone[keyRootName(targetKey)];
       if (from === undefined || to === undefined) return String(raw || '');
       let semitones = to - from;
       if (semitones > 6) semitones -= 12;
       if (semitones < -6) semitones += 12;
-      if (semitones === 0) return String(raw || '');
-
       const target = normalizeKeyName(targetKey);
-      const targetSemi = noteToSemitone[target];
+      const targetSemi = noteToSemitone[keyRootName(target)];
       const preferFlats = ['F','Bb','Eb','Ab','Db','Gb'].includes(flatScale[targetSemi]);
-
       return String(raw || '').replace(/\r\n?/g,'\n').split('\n').map(line => {
-        if (/^\s*Key\s+of\s+[A-G](?:#|b)?\s*$/i.test(line)) {
-          return line.replace(/^([\s]*Key\s+of\s+)[A-G](?:#|b)?\s*$/i, `$1${target}`);
-        }
+        const meta=parseMetadataLine(line);
+        if(meta && meta.type==='key') return replaceKeyMetadataLine(line,target);
         if (isBandCue(line) || isSectionHeader(line) || isRepeatDirective(line) || parseMetadataLine(line)) return line;
         return transposeChordRowsInLine(line, semitones, preferFlats);
       }).join('\n');
@@ -1901,15 +2015,15 @@
 
     function transpose(semitones){
       const raw=document.getElementById('songContent').value;
-      const keyMatches=[...raw.matchAll(/^Key\s+of\s+([A-G](?:#|b)?)\s*$/gim)];
+      const keyMatches=[...raw.matchAll(/^\s*Key\s*(?:of\s*)?:?\s*([A-G](?:#|b)?(?:\s*(?:m|min|minor))?)\s*$/gim)];
       const reference=keyMatches.length?normalizeKeyName(keyMatches[0][1]):'C';
-      const from=noteToSemitone[reference]??0;
+      const referenceRoot=keyRootName(reference);
+      const from=noteToSemitone[referenceRoot]??0;
       const target=(from+semitones+120)%12;
       const preferFlats=['F','Bb','Eb','Ab','Db','Gb'].includes(flatScale[target]);
-      const newKey=(preferFlats?flatScale:sharpScale)[target];
-
       const lines=raw.split('\n').map(line=>{
-        if (/^\s*Key\s+of\s+[A-G](?:#|b)?\s*$/i.test(line)) return line.replace(/^([\s]*Key\s+of\s+)[A-G](?:#|b)?\s*$/i,`$1${newKey}`);
+        const meta=parseMetadataLine(line);
+        if(meta && meta.type==='key') return replaceKeyMetadataLine(line,transposeKeyName(meta.value,semitones,preferFlats));
         if (isBandCue(line) || isSectionHeader(line) || isRepeatDirective(line) || parseMetadataLine(line)) return line;
         return transposeChordRowsInLine(line,semitones,preferFlats);
       });
@@ -1953,11 +2067,38 @@
     function escapeHtml(str){ return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/ /g,'&nbsp;'); }
     function updatePreview(){ const area=document.getElementById('previewArea'); if(area) area.innerHTML=generateGDocHtml(); }
 
+    function generateGDocPlainText(){
+      const content=document.getElementById('songContent').value;
+      const songs=parseSongDocument(content).filter(s=>s.title||s.key||s.bpm||s.body.some(x=>normalizePastedLine(x)));
+      return songs.map(s=>{
+        const lines=[];
+        if(s.title) lines.push(s.title.toUpperCase());
+        if(s.bpm) lines.push(`Bpm ${s.bpm}`);
+        if(s.key) lines.push(`Key of ${s.key}`);
+        if(s.title||s.bpm||s.key) lines.push('');
+        const body=formatSongBody(s.body,getMinimumLyricChars());
+        if(body) lines.push(body);
+        return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+      }).filter(Boolean).join('\n\n\n').trim();
+    }
+
     async function copyForGoogleDocs(){
       const gdocHtml=`<!DOCTYPE html><html><body>${generateGDocHtml()}</body></html>`;
-      const plainText=document.getElementById('songContent').value;
-      try { await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([gdocHtml],{type:'text/html'}),'text/plain':new Blob([plainText],{type:'text/plain'})})]); showToast(); }
-      catch(e){ const listener=ev=>{ev.clipboardData.setData('text/html',gdocHtml);ev.clipboardData.setData('text/plain',plainText);ev.preventDefault();}; document.addEventListener('copy',listener); document.execCommand('copy'); document.removeEventListener('copy',listener); showToast(); }
+      // Text fallback mirrors the formatted output instead of copying the raw source.
+      const plainText=generateGDocPlainText();
+      try {
+        if(!navigator.clipboard?.write || typeof ClipboardItem==='undefined') throw new Error('Clipboard HTML API unavailable');
+        await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([gdocHtml],{type:'text/html'}),'text/plain':new Blob([plainText],{type:'text/plain'})})]);
+        showToast('Copied the formatted chart for Google Docs.');
+        return;
+      } catch(e) {
+        const listener=ev=>{ev.clipboardData.setData('text/html',gdocHtml);ev.clipboardData.setData('text/plain',plainText);ev.preventDefault();};
+        document.addEventListener('copy',listener);
+        let copied=false;
+        try { copied=document.execCommand('copy'); } catch(_) { copied=false; }
+        document.removeEventListener('copy',listener);
+        showToast(copied?'Copied the formatted chart for Google Docs.':'Copy was blocked by the browser. Please allow clipboard access or copy the editor text manually.');
+      }
     }
 
     function stripChordsFromLyricLine(line){
@@ -1970,7 +2111,7 @@
       let n=0;
       while(n<parts.length && isChordToken(parts[n])) n++;
       const firstChord=parts[0]||'';
-      const unambiguousSingleChord=/^[A-Ga-g](?:b|#)?(?:m|min|maj|sus|dim|aug|add|no|[0-9]|\(|\/|\+|-)/i.test(firstChord);
+      const unambiguousSingleChord=/^[A-Ga-g](?:b|#)?(?:m|min|maj|sus|dim|aug|add|no|[0-9]|\(|\/|\+|-|[.,!?;:…])/i.test(firstChord);
       if(n>1 || (n===1 && unambiguousSingleChord && n<parts.length)) t=parts.slice(n).join(' ');
       return cleanLyricFragment(t);
     }
@@ -2005,13 +2146,19 @@
       const text=buildProPresenterText();
       if(!text){ showToast('No lyrics/section content found to copy.'); return; }
       try {
+        if(!navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
         await navigator.clipboard.writeText(text);
+        showToast('Copied for ProPresenter: lyrics and section headers only.');
+        return;
       } catch(e){
         const ta=document.createElement('textarea');
         ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
-        document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand('copy'); ta.remove();
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        let copied=false;
+        try { copied=document.execCommand('copy'); } catch(_) { copied=false; }
+        ta.remove();
+        showToast(copied?'Copied for ProPresenter: lyrics and section headers only.':'Copy was blocked by the browser. Please allow clipboard access or manually copy the lyrics from the editor.');
       }
-      showToast('Copied for ProPresenter: lyrics and section headers only.');
     }
 
     function applyIsolatedBpm(value){
@@ -2032,59 +2179,76 @@
       el.value=raw;
       updatePreview();
       refreshSongSelector();
-      setIsolationStatus('Isolated song BPM updated. Click Save to Set to keep it.');
+      setIsolationStatus('Isolated song updated. Click Save to Set to keep your changes.');
       refreshChordChecker(false);
     }
 
     function runChordChecker(){ refreshChordChecker(true); }
 
-    function chordCheckerCandidate(token){
+    function chordCheckerComparableToken(token){
+      let t=cleanChordToken(token);
+      if(/^\(.*\)$/.test(t)){
+        const inner=t.slice(1,-1).trim();
+        if(isChordToken(inner)) return inner;
+      }
+      return t;
+    }
+
+    function chordCheckerCandidate(token, allowUnknownSuffix=false){
       let t=cleanChordToken(token);
       if(!t || isRepeatCountToken(t) || isChordDecorationToken(t)) return false;
       if(/^\(.*\)$/.test(t)) t=t.slice(1,-1).trim();
-      const m=t.match(/^([A-Ga-g](?:b|#)?)(.*)$/);
+      const m=t.match(/^([A-Ha-h](?:b|#)?)(.*)$/);
       if(!m) return false;
       const rest=m[2];
-      // Syntax problems: chord-looking text that is close to a chord but fails the
-      // formatter's actual chord grammar.
-      return /[0-9#b()\/+-]/.test(rest) || /^(?:m|maj|min|sus|dim|aug|add|no)/i.test(rest);
+      if(/[0-9#b()\/+\-°]/.test(rest) || /^(?:m|maj|min|sus|dim|aug|add|no|ø)/i.test(rest)) return true;
+      if(allowUnknownSuffix && /^[A-G][A-Za-z]{2,6}$/.test(t)){
+        const commonWords=new Set(['about','again','alive','amazing','amen','away','because','bless','come','coming','call','calls','can','cannot','carry','change','christ','come','grace','glory','god','good','great','heaven','heart','holy','hope','house','jesus','king','light','lord','love','mercy','mighty','name','never','only','open','praise','power','redeemed','savior','saviour','sing','soul','spirit','worthy']);
+        return !commonWords.has(t.toLowerCase());
+      }
+      return false;
     }
 
     function chordCheckerRoot(token){
-      let t=cleanChordToken(token);
-      if(/^\(.*\)$/.test(t)) t=t.slice(1,-1).trim();
+      const t=chordCheckerComparableToken(token);
       const slash=t.split('/')[0];
       const m=slash.match(/^([A-Ga-g](?:b|#)?)/);
       if(!m) return null;
-      const note=normalizeKeyName(m[1]);
+      const note=keyRootName(m[1]);
       const semi=noteToSemitone[note];
       return semi===undefined?null:{name:note,semitone:semi};
     }
 
     function chordCheckerFamily(token){
-      let t=cleanChordToken(token);
-      if(/^\(.*\)$/.test(t)) t=t.slice(1,-1).trim();
+      let t=chordCheckerComparableToken(token);
       const m=t.match(/^([A-Ga-g](?:b|#)?)(.*)$/);
       if(!m) return 'unknown';
       const rest=m[2].split('/')[0].toLowerCase();
-      if(/dim|°/.test(rest)) return 'dim';
-      if(/aug/.test(rest) || /\+/.test(rest)) return 'aug';
-      if(/(?:^|[^a-z])min/.test(rest) || /^m(?:$|[0-9(])/.test(rest)) return 'minor';
-      if(/sus/.test(rest)) return 'major';
-      if(/maj/.test(rest)) return 'major';
-      // add, no, 5, 6, 7, 9, etc. without an explicit minor/dim/aug quality
-      // are treated as major-family for compatibility with common worship charts.
+      if(/(?:^|\()dim|°|m7b5|ø7/.test(rest)) return 'dim';
+      if(/aug|\+/.test(rest)) return 'aug';
+      if(/sus|^5$|no3/.test(rest)) return 'neutral';
+      if(/^(?:m|min)(?:$|[0-9(])/.test(rest) && !/^maj/.test(rest)) return 'minor';
+      if(/^maj/.test(rest)) return 'major';
       return 'major';
     }
 
+    function chordCheckerSimpleTriad(token){
+      const t=chordCheckerComparableToken(token);
+      const rootAndSuffix=t.match(/^([A-Ga-g](?:b|#)?)(.*)$/);
+      if(!rootAndSuffix || t.includes('/')) return false;
+      return /^(?:|m|min|dim|aug)$/i.test(rootAndSuffix[2]);
+    }
+
     function chordCheckerKeyProfile(keyName){
-      const k=normalizePastedLine(keyName||'');
-      const minor=/m(?:in)?$/i.test(k);
-      const rootText=minor?k.replace(/m(?:in)?$/i,''):k;
-      const root=chordCheckerRoot(rootText);
+      const k=normalizeKeyName(keyName||'');
+      const minor=keyIsMinor(k);
+      const root=chordCheckerRoot(keyRootName(k));
       if(!root) return null;
       const intervals=minor?[0,2,3,5,7,8,10]:[0,2,4,5,7,9,11];
-      const families=minor?['minor','dim','major','minor','minor','major','major']:
+      // Natural-minor harmony commonly uses both a minor v and a major V
+      // (harmonic minor). Do not flag E major as an error in A minor simply
+      // because the natural-minor profile alone expects Em.
+      const families=minor?['minor','dim','major','minor','minor-or-major','major','major']:
         ['major','minor','minor','major','major','minor','dim'];
       const names=minor?['i','ii°','III','iv','v','VI','VII']:['I','ii','iii','IV','V','vi','vii°'];
       const scale=new Map();
@@ -2093,119 +2257,203 @@
     }
 
     function chordCheckerExpected(profile, rootSemitone){
-      if(!profile) return null;
-      const hit=profile.scale.get(rootSemitone);
-      return hit || null;
+      return profile ? (profile.scale.get(rootSemitone) || null) : null;
     }
 
     function chordCheckerReason(token, profile){
       const root=chordCheckerRoot(token);
-      if(!root || !profile) return null;
+      if(!root || !profile || !chordCheckerSimpleTriad(token)) return null;
       const expected=chordCheckerExpected(profile,root.semitone);
       const actual=chordCheckerFamily(token);
-
-      if(!expected){
-        return `Possible non-diatonic chord: ${root.name} is outside ${profile.key}. This may be intentional (borrowed/secondary chord), but it is worth checking.`;
-      }
-
-      // Power/neutral spellings and suspended/add chords are deliberately permissive.
-      if(actual==='major' && expected.family==='minor'){
-        return `Possible chord mismatch: ${root.name} is ${expected.degree} in ${profile.key}, so a minor-family chord would normally be expected here.`;
-      }
-      if(actual==='minor' && expected.family==='major'){
-        return `Possible chord mismatch: ${root.name} is ${expected.degree} in ${profile.key}, so a major-family chord would normally be expected here.`;
-      }
-      if(actual==='dim' && expected.family!=='dim'){
-        return `Possible chord mismatch: ${root.name} is ${expected.degree} in ${profile.key}, but this is a diminished chord.`;
-      }
-      if(actual==='aug'){
-        return `Possible unusual chord quality: ${root.name} is augmented in ${profile.key}.`;
-      }
+      if(!expected) return `Possible non-diatonic chord: ${root.name} is outside ${profile.key}. This may be intentional (borrowed or secondary chord), so check against the arrangement.`;
+      if(actual==='neutral') return null;
+      if(expected.family==='minor-or-major' && (actual==='minor' || actual==='major')) return null;
+      if(actual==='major' && expected.family==='minor') return `Possible chord mismatch: ${root.name} is ${expected.degree} in ${profile.key}, where a minor triad is normally expected.`;
+      if((actual==='major' || actual==='minor') && expected.family==='dim') return `Possible chord mismatch: ${root.name} is ${expected.degree} in ${profile.key}, where a diminished triad is normally expected.`;
+      if(actual==='minor' && expected.family==='major') return `Possible chord mismatch: ${root.name} is ${expected.degree} in ${profile.key}, where a major triad is normally expected.`;
+      if(actual==='dim' && expected.family!=='dim') return `Possible chord mismatch: ${root.name} is ${expected.degree} in ${profile.key}, but the chord is diminished.`;
+      if(actual==='aug') return `Possible unusual augmented chord on ${root.name} in ${profile.key}.`;
       return null;
+    }
+
+    function chordCheckerSuggestion(token, profile){
+      const root=chordCheckerRoot(token);
+      if(!root || !profile || !chordCheckerSimpleTriad(token)) return '';
+      const expected=chordCheckerExpected(profile,root.semitone);
+      if(!expected) return '';
+      const actual=chordCheckerFamily(token);
+      if(expected.family==='minor' && actual==='major') return root.name+'m';
+      if(expected.family==='major' && actual==='minor') return root.name;
+      if(expected.family==='dim' && (actual==='major' || actual==='minor')) return root.name+'dim';
+      if(expected.family==='major' && actual==='dim') return root.name;
+      if(expected.family==='minor' && actual==='dim') return root.name+'m';
+      return '';
+    }
+
+    function checkerChordTokensForLine(line){
+      if(isChordLine(line) || isPipeChordLine(line)){
+        const result=[];
+        const pushChord = token => {
+          const t=String(token||'').trim();
+          if(t && isChordToken(t)) result.push(chordCheckerComparableToken(t));
+        };
+        for(const token of normalizePastedLine(line).split(/\s+/).filter(Boolean)){
+          if(!isChordToken(token)) continue;
+          if(/^\(.*\)$/.test(token)){
+            const inside=token.slice(1,-1).trim();
+            if(inside.includes('|')) inside.split('|').forEach(part=>pushChord(part));
+            else {
+              const parts=inside.split(/\s+/).filter(Boolean);
+              if(parts.length>1 && parts.every(x=>isChordToken(x)||isRepeatCountToken(x))) parts.filter(isChordToken).forEach(pushChord);
+              else pushChord(inside);
+            }
+          } else if(token.includes('|')) {
+            token.split('|').filter(Boolean).forEach(pushChord);
+          } else pushChord(token);
+        }
+        return result.filter(Boolean);
+      }
+      // Also support chord-prefix lyrics such as `A... Amazing Grace`, but do not
+      // treat an ambiguous single root (`A Hallelujah`) as a definite chord.
+      const bracketed=[...String(line).matchAll(/\[([^\]]+)\]/g)].map(m=>m[1]).filter(isChordToken);
+      if(bracketed.length) return bracketed.map(chordCheckerComparableToken);
+      const tokens=normalizePastedLine(line).split(/\s+/).filter(Boolean);
+      let n=0;
+      while(n<tokens.length && isChordToken(tokens[n])) n++;
+      if(n>1) return tokens.slice(0,n).map(chordCheckerComparableToken);
+      if(n===1 && tokens.length>1 && /[.,!?;:…]+$/.test(tokens[0])) return [chordCheckerComparableToken(tokens[0])];
+      if(n===1 && tokens.length>1 && chordCheckerComparableToken(tokens[0]).length>1) return [chordCheckerComparableToken(tokens[0])];
+      return [];
+    }
+
+    function replaceChordTokenOnLine(line, token, suggestion){
+      const matches=[...String(line).matchAll(/\S+/g)];
+      for(const match of matches){
+        const rawToken=match[0];
+        // A compact bar-separated progression (G|Gsus) may contain more than
+        // one chord in the same whitespace token. Replace only the matching part.
+        if(rawToken.includes('|')){
+          const segments=rawToken.split('|');
+          for(let i=0;i<segments.length;i++){
+            if(!segments[i]) continue;
+            const comparable=chordCheckerComparableToken(segments[i]);
+            if(comparable.toLowerCase()===String(token).toLowerCase()){
+              segments[i]=suggestion;
+              const replacement=segments.join('|');
+              return line.slice(0,match.index)+replacement+line.slice(match.index+rawToken.length);
+            }
+          }
+        }
+        const comparable=chordCheckerComparableToken(rawToken);
+        if(comparable.toLowerCase()===String(token).toLowerCase()){
+          const replacement=/^\[.*\]$/.test(rawToken)?`[${suggestion}]`:suggestion;
+          return line.slice(0,match.index)+replacement+line.slice(match.index+rawToken.length);
+        }
+      }
+      // Inline chord markup can be followed immediately by lyric text.
+      return String(line).replace(/\[([^\]]+)\]/g,(whole,chord)=>chordCheckerComparableToken(chord).toLowerCase()===String(token).toLowerCase()?`[${suggestion}]`:whole);
+    }
+
+    function acceptChordSuggestion(lineNumber, token, suggestion){
+      if(!suggestion) return;
+      const ta=document.getElementById('songContent');
+      const lines=ta.value.replace(/\r\n?/g,'\n').split('\n');
+      if(lineNumber<1 || lineNumber>lines.length) return;
+      const nextLine=replaceChordTokenOnLine(lines[lineNumber-1],token,suggestion);
+      if(nextLine===lines[lineNumber-1]){ showToast('Could not safely locate that chord. Please edit it manually.'); return; }
+      lines[lineNumber-1]=nextLine;
+      setEditor(lines.join('\n'));
+      refreshChordChecker(false);
+      showToast(`Accepted: ${token} → ${suggestion}`);
     }
 
     function refreshChordChecker(showToastMessage=false){
       const status=document.getElementById('chordCheckerStatus');
       const results=document.getElementById('chordCheckerResults');
       if(!status || !results) return;
-
       const raw=document.getElementById('songContent').value.replace(/\r\n?/g,'\n');
-      const issues=[];
       const lines=raw.split('\n');
-
-      // Prefer the declared chart key. If there is none, use the formatter's key inference.
-      let declaredKey='';
-      for(const rawLine of lines){
-        const meta=parseMetadataLine(rawLine);
-        if(meta && meta.type==='key'){ declaredKey=meta.value; break; }
+      const parsed=detectSongHeaders(raw);
+      const headers=parsed.headers || [];
+      const headerAt=new Map(headers.map(h=>[h.titleIndex,h]));
+      const issues=[];
+      let activeHeader=null;
+      let fallbackProfile=null;
+      if(!headers.length){
+        let firstKey='';
+        for(const line of lines){ const meta=parseMetadataLine(line); if(meta?.type==='key'){firstKey=meta.value;break;} }
+        fallbackProfile=chordCheckerKeyProfile(firstKey || inferChordKey(raw));
       }
-      const inferredKey=declaredKey || inferChordKey(raw);
-      const profile=chordCheckerKeyProfile(inferredKey);
 
       lines.forEach((rawLine,index)=>{
+        if(headerAt.has(index)) activeHeader=headerAt.get(index);
         const line=normalizePastedLine(rawLine);
         if(!line || isSectionHeader(line) || isBandCue(line) || isRepeatDirective(line) || parseMetadataLine(line)) return;
-        const tokens=line.split(/\s+/).filter(Boolean);
-        const chordTokens=tokens.filter(isChordToken);
-        const syntaxProblems=tokens.filter(chordCheckerCandidate).filter(token=>!isChordToken(token));
 
-        if(syntaxProblems.length && chordTokens.length>0){
-          issues.push({
-            line:index+1,
-            text:line,
-            severity:'syntax',
-            reason:`Possible chord typo: ${syntaxProblems.join(', ')} does not match the formatter's chord rules.`
-          });
+        let profile=fallbackProfile;
+        if(headers.length){
+          if(!activeHeader || index<=activeHeader.metaEnd) profile=null;
+          else {
+            const headerIndex=headers.indexOf(activeHeader);
+            const next=headers[headerIndex+1];
+            const songBody=lines.slice(activeHeader.metaEnd+1,next?next.titleIndex:lines.length).join('\n');
+            profile=chordCheckerKeyProfile(activeHeader.key || inferChordKey(songBody));
+          }
         }
 
-        if(profile && chordTokens.length){
-          const musicalProblems=[];
-          for(const token of chordTokens){
-            const reason=chordCheckerReason(token,profile);
-            if(reason) musicalProblems.push(`${token}: ${reason}`);
+        const tokens=line.split(/\s+/).filter(Boolean);
+        const validChordTokens=checkerChordTokensForLine(line);
+        const unknownSuffixAllowed=validChordTokens.length>0 || tokens.length===1;
+        const syntaxProblems=tokens.filter(token=>chordCheckerCandidate(token,unknownSuffixAllowed) && !isChordToken(token));
+        const lineLooksChordy=isChordLine(line) || isPipeChordLine(line) || validChordTokens.length>0 || (tokens.length<=5 && tokens.length>0 && tokens.every(token=>isChordToken(token)||isRepeatCountToken(token)||chordCheckerCandidate(token, true)));
+
+        if(lineLooksChordy){
+          for(const token of [...new Set(syntaxProblems)]){
+            issues.push({line:index+1,text:line,severity:'syntax',token:cleanChordToken(token),reason:`Possible chord typo: “${token}” does not match the supported chord notation. No automatic suggestion is safe for this entry.`});
           }
-          if(musicalProblems.length){
-            issues.push({
-              line:index+1,
-              text:line,
-              severity:'music',
-              reason:musicalProblems.join(' ')
-            });
+          if(profile){
+            for(const token of [...new Set(validChordTokens)]){
+              const reason=chordCheckerReason(token,profile);
+              if(reason) issues.push({line:index+1,text:line,severity:'music',token,reason,suggestion:chordCheckerSuggestion(token,profile)});
+            }
           }
         }
       });
 
-      // De-duplicate issues for a line when the same token produced multiple messages.
       const unique=[];
       const seen=new Set();
       for(const issue of issues){
-        const key=`${issue.line}|${issue.reason}`;
+        const key=`${issue.line}|${issue.token}|${issue.reason}`;
         if(!seen.has(key)){seen.add(key);unique.push(issue);}
       }
 
       if(!unique.length){
-        status.textContent=profile
-          ? `No obvious chord issues found${inferredKey?` in ${escapeHtml(inferredKey)}`:''}.`
-          : 'No obvious chord issues found. Add a Key line for musical consistency checking.';
+        const keysFound=headers.filter(h=>h.key).length;
+        status.textContent=fallbackProfile ? `No obvious chord issues found in ${fallbackProfile.key}.` : (keysFound ? 'No obvious chord issues found for the detected song keys.' : 'No obvious chord issues found. Add a Key line to enable key/quality checks; syntax checks still run.');
         status.style.color='var(--text-muted)';
         results.innerHTML='';
         if(showToastMessage) showToast('Chord check complete: no obvious issues found.');
         return;
       }
 
-      status.textContent=`${unique.length} possible chord issue${unique.length===1?'':'s'} found. Nothing was changed.`;
+      status.textContent=`${unique.length} possible chord issue${unique.length===1?'':'s'} found. Nothing changed. Use Accept Change only when you agree with a suggested alternative.`;
       status.style.color='#fca5a5';
       results.innerHTML=unique.map(issue=>`<div class="chord-issue" data-line="${issue.line}" title="Click to select this line in the editor">
         <strong>Line ${issue.line}</strong> · ${escapeHtml(issue.reason)}<br>
         <code>${escapeHtml(issue.text)}</code>
+        ${issue.suggestion?`<div class="chord-issue-action"><span>Suggested: <strong>${escapeHtml(issue.suggestion)}</strong></span><button type="button" class="accept-chord-change" data-line="${issue.line}" data-token="${escapeHtml(issue.token)}" data-suggestion="${escapeHtml(issue.suggestion)}">Accept Change</button></div>`:''}
       </div>`).join('');
-      [...results.querySelectorAll('.chord-issue')].forEach(el=>el.addEventListener('click',()=>{
+      [...results.querySelectorAll('.chord-issue')].forEach(el=>el.addEventListener('click',event=>{
+        if(event.target.closest('.accept-chord-change')) return;
         const targetLine=Number(el.dataset.line);
         const ta=document.getElementById('songContent');
         const all=ta.value.split('\n');
         const start=all.slice(0,targetLine-1).reduce((n,x)=>n+x.length+1,0);
-        ta.focus();
-        ta.setSelectionRange(start,start+all[targetLine-1].length);
+        ta.focus(); ta.setSelectionRange(start,start+(all[targetLine-1]||'').length);
+      }));
+      [...results.querySelectorAll('.accept-chord-change')].forEach(button=>button.addEventListener('click',event=>{
+        event.preventDefault(); event.stopPropagation();
+        acceptChordSuggestion(Number(button.dataset.line),button.dataset.token,button.dataset.suggestion);
       }));
       if(showToastMessage) showToast(`Chord check: ${unique.length} possible issue${unique.length===1?'':'s'} found.`);
     }
@@ -2220,31 +2468,44 @@
     }
 
     let isolatedSongState=null;
-    function canonicalSongText(song){ const a=[]; if(song.title)a.push(song.title); if(song.bpm)a.push(`Bpm: ${song.bpm}`); if(song.key)a.push(`Key of ${song.key}`); if(song.title||song.bpm||song.key) a.push(''); if(song.body?.length)a.push(...song.body); return a.join('\n').trim(); }
+    function canonicalSongText(song){
+      const a=[];
+      if(song.title) a.push(song.title);
+      if(song.headerSupportLines?.length) a.push(...song.headerSupportLines);
+      if(song.bpm) a.push(`Bpm: ${song.bpm}`);
+      if(song.key) a.push(`Key of ${song.key}`);
+      if(song.title||song.bpm||song.key) a.push('');
+      if(song.body?.length) a.push(...song.body);
+      return a.join('\n').trim();
+    }
 
     function parseSongDocumentWithRanges(raw){
       const parsed=detectSongHeaders(raw);
       const lines=parsed.lines, headers=parsed.headers;
-      if(!headers.length) return [{title:'',bpm:'',key:'',body:lines.slice(),startLine:0,endLine:lines.length}];
-
-      return headers.map((h,i)=>{
+      if(!headers.length) return [{title:'',bpm:'',key:'',headerSupportLines:[],body:lines.slice(),startLine:0,endLine:lines.length,unassigned:true}];
+      const songs=headers.map((h,i)=>{
         const next=headers[i+1];
         return {
-          title:h.title,
-          bpm:h.bpm,
-          key:h.key,
+          title:h.title,bpm:h.bpm,key:h.key,headerSupportLines:h.headerSupportLines||[],
           body:lines.slice(h.metaEnd+1,next?next.titleIndex:lines.length),
-          startLine:h.titleIndex,
-          endLine:next?next.titleIndex:lines.length
+          startLine:h.titleIndex,endLine:next?next.titleIndex:lines.length
         };
       });
+      const prefix=lines.slice(0,headers[0].titleIndex);
+      if(prefix.some(line=>normalizePastedLine(line))) songs.unshift({title:'',bpm:'',key:'',headerSupportLines:[],body:prefix,startLine:0,endLine:headers[0].titleIndex,unassigned:true});
+      return songs;
     }
 
     function refreshSongSelector(){
-      const s=document.getElementById('songSelector'); if(!s)return;
+      const select=document.getElementById('songSelector'); if(!select)return;
+      const previous=select.value;
       const songs=parseSongDocumentWithRanges(document.getElementById('songContent').value).filter(x=>x.title||x.key||x.bpm||x.body.some(y=>normalizePastedLine(y)));
-      s.innerHTML=songs.length?songs.map((x,i)=>`<option value="${i}">${i+1}. ${escapeHtml(x.title||`Song ${i+1}`)}</option>`).join(''):'<option value="">No songs detected yet</option>';
-      if(isolatedSongState) s.disabled=true;
+      select.innerHTML=songs.length?songs.map((song,i)=>{
+        const label=song.title || (song.unassigned ? 'Unassigned content before first detected song' : `Song ${i+1}`);
+        return `<option value="${i}">${i+1}. ${escapeHtml(label)}</option>`;
+      }).join(''):'<option value="">No songs detected yet</option>';
+      if(songs.some((song,i)=>String(i)===previous)) select.value=previous;
+      if(isolatedSongState) select.disabled=true;
     }
 
     function isolateSelectedSong(){
@@ -2260,8 +2521,12 @@
       let isolatedText=canonicalSongText(songs[i]);
       const declaredKey=normalizeKeyName(songs[i].key||'');
       const detectedChordKey=inferChordKey(isolatedText);
-      if(declaredKey && detectedChordKey && declaredKey !== detectedChordKey) {
-        isolatedText=transposeContentFromKeyToTarget(isolatedText, detectedChordKey, declaredKey);
+      let keyAlignmentApplied=false;
+      // Root-frequency inference is not reliable for minor/modal songs; never use it to
+      // silently shift their chords or present a relative-major guess as a correction.
+      if(declaredKey && detectedChordKey && !keyIsMinor(declaredKey) && !keyIsMinor(detectedChordKey) && keyRootName(declaredKey)!==keyRootName(detectedChordKey)) {
+        const proceed=window.confirm(`The declared key is ${declaredKey}, but the chord pattern may be closer to ${detectedChordKey}. Transpose the isolated chart to ${declaredKey}?`);
+        if(proceed){ isolatedText=transposeContentFromKeyToTarget(isolatedText, detectedChordKey, declaredKey); keyAlignmentApplied=true; }
       }
 
       setEditor(isolatedText);
@@ -2269,19 +2534,33 @@
       document.getElementById('isolatedKey').value=declaredKey;
       document.getElementById('isolatedBpm').value=songs[i].bpm||'';
       refreshChordChecker(false);
-      setIsolationStatus(`ISOLATED: ${songs[i].title||`Song ${i+1}`}. Chart aligned to Key of ${declaredKey}. Edit BPM/key, transpose, and edit only this song, then click Save to Set.`);
+      const alignmentNote=keyAlignmentApplied?'Chord transposition was applied after confirmation.':(declaredKey?'No automatic chord transposition was applied.':'No declared key was found.');
+      setIsolationStatus(`ISOLATED: ${songs[i].title||`Song ${i+1}`}. Key of ${declaredKey||'unknown'}. ${alignmentNote} Edit BPM/key, transpose, and click Save to Set when finished.`);
     }
 
     function applyIsolatedKey(target){
-      if(!target)return;
+      if(!target || !isolatedSongState)return;
       const raw=document.getElementById('songContent').value;
-      const m=raw.match(/^Key\s+of\s+([A-G](?:#|b)?)\s*$/im);
-      if(!m){setIsolationStatus('No Key line found in isolated song.',true);return;}
-      const from=noteToSemitone[normalizeKeyName(m[1])],to=noteToSemitone[target];
+      const lines=raw.split('\n');
+      const keyIndex=lines.findIndex(line=>{const meta=parseMetadataLine(line);return meta&&meta.type==='key';});
+      if(keyIndex<0){setIsolationStatus('No Key line found in isolated song.',true);return;}
+      const current=parseMetadataLine(lines[keyIndex]).value;
+      const normalizedTarget=normalizeKeyName(target);
+      if(keyIsMinor(current)!==keyIsMinor(normalizedTarget)){
+        const proceed=window.confirm(`You are changing the song mode from ${keyIsMinor(current)?'minor':'major'} to ${keyIsMinor(normalizedTarget)?'minor':'major'}. The formatter can transpose note roots, but it will not convert every chord quality automatically. Continue?`);
+        if(!proceed){document.getElementById('isolatedKey').value=current;return;}
+      }
+      const from=noteToSemitone[keyRootName(current)],to=noteToSemitone[keyRootName(normalizedTarget)];
       if(from===undefined||to===undefined)return;
       let d=to-from; if(d>6)d-=12;if(d<-6)d+=12;
       transpose(d);
-      document.getElementById('isolatedKey').value=target;
+      const updated=document.getElementById('songContent').value.split('\n');
+      const movedIndex=updated.findIndex(line=>{const meta=parseMetadataLine(line);return meta&&meta.type==='key';});
+      if(movedIndex>=0) updated[movedIndex]=replaceKeyMetadataLine(updated[movedIndex],target);
+      setEditor(updated.join('\n'));
+      document.getElementById('isolatedKey').value=normalizedTarget;
+      setIsolationStatus(`Key changed to ${normalizedTarget}. Review the chart, then click Save to Set.`);
+      refreshChordChecker(false);
     }
 
     function applyIsolatedSong(){
